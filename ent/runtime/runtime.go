@@ -19,6 +19,8 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/schema"
 	"github.com/cloudreve/Cloudreve/v4/ent/setting"
 	"github.com/cloudreve/Cloudreve/v4/ent/share"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspace"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
 	"github.com/cloudreve/Cloudreve/v4/ent/storagepolicy"
 	"github.com/cloudreve/Cloudreve/v4/ent/task"
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
@@ -341,6 +343,66 @@ func init() {
 	shareDescDownloads := shareFields[2].Descriptor()
 	// share.DefaultDownloads holds the default value on creation for the downloads field.
 	share.DefaultDownloads = shareDescDownloads.Default.(int)
+	sharedspaceMixin := schema.SharedSpace{}.Mixin()
+	sharedspaceMixinHooks0 := sharedspaceMixin[0].Hooks()
+	sharedspace.Hooks[0] = sharedspaceMixinHooks0[0]
+	sharedspaceMixinInters0 := sharedspaceMixin[0].Interceptors()
+	sharedspace.Interceptors[0] = sharedspaceMixinInters0[0]
+	sharedspaceMixinFields0 := sharedspaceMixin[0].Fields()
+	_ = sharedspaceMixinFields0
+	sharedspaceFields := schema.SharedSpace{}.Fields()
+	_ = sharedspaceFields
+	// sharedspaceDescCreatedAt is the schema descriptor for created_at field.
+	sharedspaceDescCreatedAt := sharedspaceMixinFields0[0].Descriptor()
+	// sharedspace.DefaultCreatedAt holds the default value on creation for the created_at field.
+	sharedspace.DefaultCreatedAt = sharedspaceDescCreatedAt.Default.(func() time.Time)
+	// sharedspaceDescUpdatedAt is the schema descriptor for updated_at field.
+	sharedspaceDescUpdatedAt := sharedspaceMixinFields0[1].Descriptor()
+	// sharedspace.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	sharedspace.DefaultUpdatedAt = sharedspaceDescUpdatedAt.Default.(func() time.Time)
+	// sharedspace.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	sharedspace.UpdateDefaultUpdatedAt = sharedspaceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// sharedspaceDescName is the schema descriptor for name field.
+	sharedspaceDescName := sharedspaceFields[0].Descriptor()
+	// sharedspace.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	sharedspace.NameValidator = func() func(string) error {
+		validators := sharedspaceDescName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(name string) error {
+			for _, fn := range fns {
+				if err := fn(name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// sharedspaceDescDescription is the schema descriptor for description field.
+	sharedspaceDescDescription := sharedspaceFields[1].Descriptor()
+	// sharedspace.DescriptionValidator is a validator for the "description" field. It is called by the builders before save.
+	sharedspace.DescriptionValidator = sharedspaceDescDescription.Validators[0].(func(string) error)
+	sharedspacememberMixin := schema.SharedSpaceMember{}.Mixin()
+	sharedspacememberMixinHooks0 := sharedspacememberMixin[0].Hooks()
+	sharedspacemember.Hooks[0] = sharedspacememberMixinHooks0[0]
+	sharedspacememberMixinInters0 := sharedspacememberMixin[0].Interceptors()
+	sharedspacemember.Interceptors[0] = sharedspacememberMixinInters0[0]
+	sharedspacememberMixinFields0 := sharedspacememberMixin[0].Fields()
+	_ = sharedspacememberMixinFields0
+	sharedspacememberFields := schema.SharedSpaceMember{}.Fields()
+	_ = sharedspacememberFields
+	// sharedspacememberDescCreatedAt is the schema descriptor for created_at field.
+	sharedspacememberDescCreatedAt := sharedspacememberMixinFields0[0].Descriptor()
+	// sharedspacemember.DefaultCreatedAt holds the default value on creation for the created_at field.
+	sharedspacemember.DefaultCreatedAt = sharedspacememberDescCreatedAt.Default.(func() time.Time)
+	// sharedspacememberDescUpdatedAt is the schema descriptor for updated_at field.
+	sharedspacememberDescUpdatedAt := sharedspacememberMixinFields0[1].Descriptor()
+	// sharedspacemember.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	sharedspacemember.DefaultUpdatedAt = sharedspacememberDescUpdatedAt.Default.(func() time.Time)
+	// sharedspacemember.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	sharedspacemember.UpdateDefaultUpdatedAt = sharedspacememberDescUpdatedAt.UpdateDefault.(func() time.Time)
 	storagepolicyMixin := schema.StoragePolicy{}.Mixin()
 	storagepolicyMixinHooks0 := storagepolicyMixin[0].Hooks()
 	storagepolicy.Hooks[0] = storagepolicyMixinHooks0[0]

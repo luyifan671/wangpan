@@ -38,6 +38,8 @@ const (
 	EdgeUsers = "users"
 	// EdgeStoragePolicies holds the string denoting the storage_policies edge name in mutations.
 	EdgeStoragePolicies = "storage_policies"
+	// EdgeSpaceMemberships holds the string denoting the space_memberships edge name in mutations.
+	EdgeSpaceMemberships = "space_memberships"
 	// Table holds the table name of the group in the database.
 	Table = "groups"
 	// UsersTable is the table that holds the users relation/edge.
@@ -54,6 +56,13 @@ const (
 	StoragePoliciesInverseTable = "storage_policies"
 	// StoragePoliciesColumn is the table column denoting the storage_policies relation/edge.
 	StoragePoliciesColumn = "storage_policy_id"
+	// SpaceMembershipsTable is the table that holds the space_memberships relation/edge.
+	SpaceMembershipsTable = "shared_space_members"
+	// SpaceMembershipsInverseTable is the table name for the SharedSpaceMember entity.
+	// It exists in this package in order to avoid circular dependency with the "sharedspacemember" package.
+	SpaceMembershipsInverseTable = "shared_space_members"
+	// SpaceMembershipsColumn is the table column denoting the space_memberships relation/edge.
+	SpaceMembershipsColumn = "group_id"
 )
 
 // Columns holds all SQL columns for group fields.
@@ -161,6 +170,20 @@ func ByStoragePoliciesField(field string, opts ...sql.OrderTermOption) OrderOpti
 		sqlgraph.OrderByNeighborTerms(s, newStoragePoliciesStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// BySpaceMembershipsCount orders the results by space_memberships count.
+func BySpaceMembershipsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newSpaceMembershipsStep(), opts...)
+	}
+}
+
+// BySpaceMemberships orders the results by space_memberships terms.
+func BySpaceMemberships(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSpaceMembershipsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUsersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -173,5 +196,12 @@ func newStoragePoliciesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(StoragePoliciesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, StoragePoliciesTable, StoragePoliciesColumn),
+	)
+}
+func newSpaceMembershipsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SpaceMembershipsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, SpaceMembershipsTable, SpaceMembershipsColumn),
 	)
 }

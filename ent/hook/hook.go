@@ -165,6 +165,30 @@ func (f ShareFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ShareMutation", m)
 }
 
+// The SharedSpaceFunc type is an adapter to allow the use of ordinary
+// function as SharedSpace mutator.
+type SharedSpaceFunc func(context.Context, *ent.SharedSpaceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SharedSpaceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SharedSpaceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SharedSpaceMutation", m)
+}
+
+// The SharedSpaceMemberFunc type is an adapter to allow the use of ordinary
+// function as SharedSpaceMember mutator.
+type SharedSpaceMemberFunc func(context.Context, *ent.SharedSpaceMemberMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SharedSpaceMemberFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SharedSpaceMemberMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SharedSpaceMemberMutation", m)
+}
+
 // The StoragePolicyFunc type is an adapter to allow the use of ordinary
 // function as StoragePolicy mutator.
 type StoragePolicyFunc func(context.Context, *ent.StoragePolicyMutation) (ent.Value, error)

@@ -19,6 +19,8 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/oauthgrant"
 	"github.com/cloudreve/Cloudreve/v4/ent/passkey"
 	"github.com/cloudreve/Cloudreve/v4/ent/share"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspace"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
 	"github.com/cloudreve/Cloudreve/v4/ent/task"
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
 	"github.com/cloudreve/Cloudreve/v4/inventory/types"
@@ -297,6 +299,36 @@ func (uc *UserCreate) AddOauthGrants(o ...*OAuthGrant) *UserCreate {
 		ids[i] = o[i].ID
 	}
 	return uc.AddOauthGrantIDs(ids...)
+}
+
+// AddOwnedSpaceIDs adds the "owned_spaces" edge to the SharedSpace entity by IDs.
+func (uc *UserCreate) AddOwnedSpaceIDs(ids ...int) *UserCreate {
+	uc.mutation.AddOwnedSpaceIDs(ids...)
+	return uc
+}
+
+// AddOwnedSpaces adds the "owned_spaces" edges to the SharedSpace entity.
+func (uc *UserCreate) AddOwnedSpaces(s ...*SharedSpace) *UserCreate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uc.AddOwnedSpaceIDs(ids...)
+}
+
+// AddSpaceMembershipIDs adds the "space_memberships" edge to the SharedSpaceMember entity by IDs.
+func (uc *UserCreate) AddSpaceMembershipIDs(ids ...int) *UserCreate {
+	uc.mutation.AddSpaceMembershipIDs(ids...)
+	return uc
+}
+
+// AddSpaceMemberships adds the "space_memberships" edges to the SharedSpaceMember entity.
+func (uc *UserCreate) AddSpaceMemberships(s ...*SharedSpaceMember) *UserCreate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uc.AddSpaceMembershipIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -622,6 +654,38 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(oauthgrant.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.OwnedSpacesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OwnedSpacesTable,
+			Columns: []string{user.OwnedSpacesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.SpaceMembershipsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SpaceMembershipsTable,
+			Columns: []string{user.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

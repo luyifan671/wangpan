@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/cloudreve/Cloudreve/v4/ent/group"
 	"github.com/cloudreve/Cloudreve/v4/ent/predicate"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
 	"github.com/cloudreve/Cloudreve/v4/ent/storagepolicy"
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
 	"github.com/cloudreve/Cloudreve/v4/inventory/types"
@@ -198,6 +199,21 @@ func (gu *GroupUpdate) SetStoragePolicies(s *StoragePolicy) *GroupUpdate {
 	return gu.SetStoragePoliciesID(s.ID)
 }
 
+// AddSpaceMembershipIDs adds the "space_memberships" edge to the SharedSpaceMember entity by IDs.
+func (gu *GroupUpdate) AddSpaceMembershipIDs(ids ...int) *GroupUpdate {
+	gu.mutation.AddSpaceMembershipIDs(ids...)
+	return gu
+}
+
+// AddSpaceMemberships adds the "space_memberships" edges to the SharedSpaceMember entity.
+func (gu *GroupUpdate) AddSpaceMemberships(s ...*SharedSpaceMember) *GroupUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return gu.AddSpaceMembershipIDs(ids...)
+}
+
 // Mutation returns the GroupMutation object of the builder.
 func (gu *GroupUpdate) Mutation() *GroupMutation {
 	return gu.mutation
@@ -228,6 +244,27 @@ func (gu *GroupUpdate) RemoveUsers(u ...*User) *GroupUpdate {
 func (gu *GroupUpdate) ClearStoragePolicies() *GroupUpdate {
 	gu.mutation.ClearStoragePolicies()
 	return gu
+}
+
+// ClearSpaceMemberships clears all "space_memberships" edges to the SharedSpaceMember entity.
+func (gu *GroupUpdate) ClearSpaceMemberships() *GroupUpdate {
+	gu.mutation.ClearSpaceMemberships()
+	return gu
+}
+
+// RemoveSpaceMembershipIDs removes the "space_memberships" edge to SharedSpaceMember entities by IDs.
+func (gu *GroupUpdate) RemoveSpaceMembershipIDs(ids ...int) *GroupUpdate {
+	gu.mutation.RemoveSpaceMembershipIDs(ids...)
+	return gu
+}
+
+// RemoveSpaceMemberships removes "space_memberships" edges to SharedSpaceMember entities.
+func (gu *GroupUpdate) RemoveSpaceMemberships(s ...*SharedSpaceMember) *GroupUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return gu.RemoveSpaceMembershipIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -387,6 +424,51 @@ func (gu *GroupUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(storagepolicy.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if gu.mutation.SpaceMembershipsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.SpaceMembershipsTable,
+			Columns: []string{group.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := gu.mutation.RemovedSpaceMembershipsIDs(); len(nodes) > 0 && !gu.mutation.SpaceMembershipsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.SpaceMembershipsTable,
+			Columns: []string{group.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := gu.mutation.SpaceMembershipsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.SpaceMembershipsTable,
+			Columns: []string{group.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -580,6 +662,21 @@ func (guo *GroupUpdateOne) SetStoragePolicies(s *StoragePolicy) *GroupUpdateOne 
 	return guo.SetStoragePoliciesID(s.ID)
 }
 
+// AddSpaceMembershipIDs adds the "space_memberships" edge to the SharedSpaceMember entity by IDs.
+func (guo *GroupUpdateOne) AddSpaceMembershipIDs(ids ...int) *GroupUpdateOne {
+	guo.mutation.AddSpaceMembershipIDs(ids...)
+	return guo
+}
+
+// AddSpaceMemberships adds the "space_memberships" edges to the SharedSpaceMember entity.
+func (guo *GroupUpdateOne) AddSpaceMemberships(s ...*SharedSpaceMember) *GroupUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return guo.AddSpaceMembershipIDs(ids...)
+}
+
 // Mutation returns the GroupMutation object of the builder.
 func (guo *GroupUpdateOne) Mutation() *GroupMutation {
 	return guo.mutation
@@ -610,6 +707,27 @@ func (guo *GroupUpdateOne) RemoveUsers(u ...*User) *GroupUpdateOne {
 func (guo *GroupUpdateOne) ClearStoragePolicies() *GroupUpdateOne {
 	guo.mutation.ClearStoragePolicies()
 	return guo
+}
+
+// ClearSpaceMemberships clears all "space_memberships" edges to the SharedSpaceMember entity.
+func (guo *GroupUpdateOne) ClearSpaceMemberships() *GroupUpdateOne {
+	guo.mutation.ClearSpaceMemberships()
+	return guo
+}
+
+// RemoveSpaceMembershipIDs removes the "space_memberships" edge to SharedSpaceMember entities by IDs.
+func (guo *GroupUpdateOne) RemoveSpaceMembershipIDs(ids ...int) *GroupUpdateOne {
+	guo.mutation.RemoveSpaceMembershipIDs(ids...)
+	return guo
+}
+
+// RemoveSpaceMemberships removes "space_memberships" edges to SharedSpaceMember entities.
+func (guo *GroupUpdateOne) RemoveSpaceMemberships(s ...*SharedSpaceMember) *GroupUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return guo.RemoveSpaceMembershipIDs(ids...)
 }
 
 // Where appends a list predicates to the GroupUpdate builder.
@@ -799,6 +917,51 @@ func (guo *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(storagepolicy.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if guo.mutation.SpaceMembershipsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.SpaceMembershipsTable,
+			Columns: []string{group.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := guo.mutation.RemovedSpaceMembershipsIDs(); len(nodes) > 0 && !guo.mutation.SpaceMembershipsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.SpaceMembershipsTable,
+			Columns: []string{group.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := guo.mutation.SpaceMembershipsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.SpaceMembershipsTable,
+			Columns: []string{group.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -70,9 +70,13 @@ type UserEdges struct {
 	Entities []*Entity `json:"entities,omitempty"`
 	// OauthGrants holds the value of the oauth_grants edge.
 	OauthGrants []*OAuthGrant `json:"oauth_grants,omitempty"`
+	// OwnedSpaces holds the value of the owned_spaces edge.
+	OwnedSpaces []*SharedSpace `json:"owned_spaces,omitempty"`
+	// SpaceMemberships holds the value of the space_memberships edge.
+	SpaceMemberships []*SharedSpaceMember `json:"space_memberships,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [9]bool
+	loadedTypes [11]bool
 }
 
 // GroupOrErr returns the Group value or an error if the edge
@@ -158,6 +162,24 @@ func (e UserEdges) OauthGrantsOrErr() ([]*OAuthGrant, error) {
 		return e.OauthGrants, nil
 	}
 	return nil, &NotLoadedError{edge: "oauth_grants"}
+}
+
+// OwnedSpacesOrErr returns the OwnedSpaces value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) OwnedSpacesOrErr() ([]*SharedSpace, error) {
+	if e.loadedTypes[9] {
+		return e.OwnedSpaces, nil
+	}
+	return nil, &NotLoadedError{edge: "owned_spaces"}
+}
+
+// SpaceMembershipsOrErr returns the SpaceMemberships value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) SpaceMembershipsOrErr() ([]*SharedSpaceMember, error) {
+	if e.loadedTypes[10] {
+		return e.SpaceMemberships, nil
+	}
+	return nil, &NotLoadedError{edge: "space_memberships"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -327,6 +349,16 @@ func (u *User) QueryOauthGrants() *OAuthGrantQuery {
 	return NewUserClient(u.config).QueryOauthGrants(u)
 }
 
+// QueryOwnedSpaces queries the "owned_spaces" edge of the User entity.
+func (u *User) QueryOwnedSpaces() *SharedSpaceQuery {
+	return NewUserClient(u.config).QueryOwnedSpaces(u)
+}
+
+// QuerySpaceMemberships queries the "space_memberships" edge of the User entity.
+func (u *User) QuerySpaceMemberships() *SharedSpaceMemberQuery {
+	return NewUserClient(u.config).QuerySpaceMemberships(u)
+}
+
 // Update returns a builder for updating this User.
 // Note that you need to call User.Unwrap() before calling this method if this User
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -441,6 +473,18 @@ func (e *User) SetEntities(v []*Entity) {
 func (e *User) SetOauthGrants(v []*OAuthGrant) {
 	e.Edges.OauthGrants = v
 	e.Edges.loadedTypes[8] = true
+}
+
+// SetOwnedSpaces manually set the edge as loaded state.
+func (e *User) SetOwnedSpaces(v []*SharedSpace) {
+	e.Edges.OwnedSpaces = v
+	e.Edges.loadedTypes[9] = true
+}
+
+// SetSpaceMemberships manually set the edge as loaded state.
+func (e *User) SetSpaceMemberships(v []*SharedSpaceMember) {
+	e.Edges.SpaceMemberships = v
+	e.Edges.loadedTypes[10] = true
 }
 
 // Users is a parsable slice of User.

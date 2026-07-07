@@ -22,6 +22,8 @@ const (
 	TaskID
 	DavAccountID
 	PaymentID
+	SpaceID
+	SpaceMemberID
 )
 
 var (
@@ -90,6 +92,16 @@ func EncodeGroupID(encoder Encoder, uid int) string {
 // EncodePaymentID encode payment id to hash id
 func EncodePaymentID(encoder Encoder, uid int) string {
 	res, _ := encoder.Encode([]int{uid, PaymentID})
+	return res
+}
+
+func EncodeSpaceID(encoder Encoder, uid int) string {
+	res, _ := encoder.Encode([]int{uid, SpaceID})
+	return res
+}
+
+func EncodeSpaceMemberID(encoder Encoder, uid int) string {
+	res, _ := encoder.Encode([]int{uid, SpaceMemberID})
 	return res
 }
 

@@ -84,6 +84,8 @@ type Dep interface {
 	Shutdown(ctx context.Context) error
 	// FileClient Creates a new inventory.FileClient instance for access DB file store.
 	FileClient() inventory.FileClient
+	// SpaceClient Creates a new inventory.SpaceClient instance for access DB shared space store.
+	SpaceClient() inventory.SpaceClient
 	// NodeClient Creates a new inventory.NodeClient instance for access DB node store.
 	NodeClient() inventory.NodeClient
 	// DavAccountClient Creates a new inventory.DavAccountClient instance for access DB dav account store.
@@ -159,6 +161,7 @@ type dependency struct {
 	navigatorStateKv      cache.Driver
 	settingClient         inventory.SettingClient
 	fileClient            inventory.FileClient
+	spaceClient           inventory.SpaceClient
 	shareClient           inventory.ShareClient
 	settingProvider       setting.Provider
 	userClient            inventory.UserClient
@@ -834,6 +837,13 @@ func (d *dependency) DirectLinkClient() inventory.DirectLinkClient {
 	}
 
 	return inventory.NewDirectLinkClient(d.DBClient(), d.ConfigProvider().Database().Type, d.HashIDEncoder())
+}
+
+func (d *dependency) SpaceClient() inventory.SpaceClient {
+	if d.spaceClient != nil {
+		return d.spaceClient
+	}
+	return inventory.NewSpaceClient(d.DBClient(), d.HashIDEncoder())
 }
 
 func (d *dependency) HashIDEncoder() hashid.Encoder {

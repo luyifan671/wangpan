@@ -22,6 +22,8 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/predicate"
 	"github.com/cloudreve/Cloudreve/v4/ent/setting"
 	"github.com/cloudreve/Cloudreve/v4/ent/share"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspace"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
 	"github.com/cloudreve/Cloudreve/v4/ent/storagepolicy"
 	"github.com/cloudreve/Cloudreve/v4/ent/task"
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
@@ -434,6 +436,60 @@ func (f TraverseShare) Traverse(ctx context.Context, q ent.Query) error {
 	return fmt.Errorf("unexpected query type %T. expect *ent.ShareQuery", q)
 }
 
+// The SharedSpaceFunc type is an adapter to allow the use of ordinary function as a Querier.
+type SharedSpaceFunc func(context.Context, *ent.SharedSpaceQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f SharedSpaceFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.SharedSpaceQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.SharedSpaceQuery", q)
+}
+
+// The TraverseSharedSpace type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseSharedSpace func(context.Context, *ent.SharedSpaceQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseSharedSpace) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseSharedSpace) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.SharedSpaceQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.SharedSpaceQuery", q)
+}
+
+// The SharedSpaceMemberFunc type is an adapter to allow the use of ordinary function as a Querier.
+type SharedSpaceMemberFunc func(context.Context, *ent.SharedSpaceMemberQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f SharedSpaceMemberFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.SharedSpaceMemberQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.SharedSpaceMemberQuery", q)
+}
+
+// The TraverseSharedSpaceMember type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseSharedSpaceMember func(context.Context, *ent.SharedSpaceMemberQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseSharedSpaceMember) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseSharedSpaceMember) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.SharedSpaceMemberQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.SharedSpaceMemberQuery", q)
+}
+
 // The StoragePolicyFunc type is an adapter to allow the use of ordinary function as a Querier.
 type StoragePolicyFunc func(context.Context, *ent.StoragePolicyQuery) (ent.Value, error)
 
@@ -544,6 +600,10 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.SettingQuery, predicate.Setting, setting.OrderOption]{typ: ent.TypeSetting, tq: q}, nil
 	case *ent.ShareQuery:
 		return &query[*ent.ShareQuery, predicate.Share, share.OrderOption]{typ: ent.TypeShare, tq: q}, nil
+	case *ent.SharedSpaceQuery:
+		return &query[*ent.SharedSpaceQuery, predicate.SharedSpace, sharedspace.OrderOption]{typ: ent.TypeSharedSpace, tq: q}, nil
+	case *ent.SharedSpaceMemberQuery:
+		return &query[*ent.SharedSpaceMemberQuery, predicate.SharedSpaceMember, sharedspacemember.OrderOption]{typ: ent.TypeSharedSpaceMember, tq: q}, nil
 	case *ent.StoragePolicyQuery:
 		return &query[*ent.StoragePolicyQuery, predicate.StoragePolicy, storagepolicy.OrderOption]{typ: ent.TypeStoragePolicy, tq: q}, nil
 	case *ent.TaskQuery:

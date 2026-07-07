@@ -59,6 +59,10 @@ const (
 	EdgeEntities = "entities"
 	// EdgeOauthGrants holds the string denoting the oauth_grants edge name in mutations.
 	EdgeOauthGrants = "oauth_grants"
+	// EdgeOwnedSpaces holds the string denoting the owned_spaces edge name in mutations.
+	EdgeOwnedSpaces = "owned_spaces"
+	// EdgeSpaceMemberships holds the string denoting the space_memberships edge name in mutations.
+	EdgeSpaceMemberships = "space_memberships"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// GroupTable is the table that holds the group relation/edge.
@@ -124,6 +128,20 @@ const (
 	OauthGrantsInverseTable = "oauth_grants"
 	// OauthGrantsColumn is the table column denoting the oauth_grants relation/edge.
 	OauthGrantsColumn = "user_id"
+	// OwnedSpacesTable is the table that holds the owned_spaces relation/edge.
+	OwnedSpacesTable = "shared_spaces"
+	// OwnedSpacesInverseTable is the table name for the SharedSpace entity.
+	// It exists in this package in order to avoid circular dependency with the "sharedspace" package.
+	OwnedSpacesInverseTable = "shared_spaces"
+	// OwnedSpacesColumn is the table column denoting the owned_spaces relation/edge.
+	OwnedSpacesColumn = "owner_id"
+	// SpaceMembershipsTable is the table that holds the space_memberships relation/edge.
+	SpaceMembershipsTable = "shared_space_members"
+	// SpaceMembershipsInverseTable is the table name for the SharedSpaceMember entity.
+	// It exists in this package in order to avoid circular dependency with the "sharedspacemember" package.
+	SpaceMembershipsInverseTable = "shared_space_members"
+	// SpaceMembershipsColumn is the table column denoting the space_memberships relation/edge.
+	SpaceMembershipsColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -386,6 +404,34 @@ func ByOauthGrants(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newOauthGrantsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByOwnedSpacesCount orders the results by owned_spaces count.
+func ByOwnedSpacesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOwnedSpacesStep(), opts...)
+	}
+}
+
+// ByOwnedSpaces orders the results by owned_spaces terms.
+func ByOwnedSpaces(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOwnedSpacesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// BySpaceMembershipsCount orders the results by space_memberships count.
+func BySpaceMembershipsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newSpaceMembershipsStep(), opts...)
+	}
+}
+
+// BySpaceMemberships orders the results by space_memberships terms.
+func BySpaceMemberships(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSpaceMembershipsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newGroupStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -447,5 +493,19 @@ func newOauthGrantsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(OauthGrantsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, OauthGrantsTable, OauthGrantsColumn),
+	)
+}
+func newOwnedSpacesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OwnedSpacesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OwnedSpacesTable, OwnedSpacesColumn),
+	)
+}
+func newSpaceMembershipsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SpaceMembershipsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, SpaceMembershipsTable, SpaceMembershipsColumn),
 	)
 }

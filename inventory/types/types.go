@@ -91,7 +91,7 @@ type (
 		ThumbGeneratorProxy bool `json:"thumb_generator_proxy,omitempty"`
 		// NativeMediaProcessing whether to use native media processing API from storage provider.
 		NativeMediaProcessing bool `json:"native_media_processing"`
-		// S3DeleteBatchSize the number of objects to delete in each batch.
+	// S3DeleteBatchSize the number of objects to delete in each batch.
 		S3DeleteBatchSize int `json:"s3_delete_batch_size,omitempty"`
 		// StreamSaver whether to use stream saver to download file in Web.
 		StreamSaver bool `json:"stream_saver,omitempty"`
@@ -106,6 +106,9 @@ type (
 		// Whether to enable file encryption.
 		Encryption bool `json:"encryption,omitempty"`
 	}
+
+	SharedSpaceRole string
+
 
 	FileType         int
 	EntityType       int
@@ -240,6 +243,12 @@ type (
 		ColorDark string   `json:"color_dark,omitempty"`
 		Img       string   `json:"img,omitempty"`
 	}
+)
+
+const (
+	SharedSpaceRoleAdmin  SharedSpaceRole = "admin"
+	SharedSpaceRoleEditor SharedSpaceRole = "editor"
+	SharedSpaceRoleViewer SharedSpaceRole = "viewer"
 )
 
 const (

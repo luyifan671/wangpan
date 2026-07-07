@@ -20,6 +20,8 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/passkey"
 	"github.com/cloudreve/Cloudreve/v4/ent/predicate"
 	"github.com/cloudreve/Cloudreve/v4/ent/share"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspace"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
 	"github.com/cloudreve/Cloudreve/v4/ent/task"
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
 	"github.com/cloudreve/Cloudreve/v4/inventory/types"
@@ -344,6 +346,36 @@ func (uu *UserUpdate) AddOauthGrants(o ...*OAuthGrant) *UserUpdate {
 	return uu.AddOauthGrantIDs(ids...)
 }
 
+// AddOwnedSpaceIDs adds the "owned_spaces" edge to the SharedSpace entity by IDs.
+func (uu *UserUpdate) AddOwnedSpaceIDs(ids ...int) *UserUpdate {
+	uu.mutation.AddOwnedSpaceIDs(ids...)
+	return uu
+}
+
+// AddOwnedSpaces adds the "owned_spaces" edges to the SharedSpace entity.
+func (uu *UserUpdate) AddOwnedSpaces(s ...*SharedSpace) *UserUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uu.AddOwnedSpaceIDs(ids...)
+}
+
+// AddSpaceMembershipIDs adds the "space_memberships" edge to the SharedSpaceMember entity by IDs.
+func (uu *UserUpdate) AddSpaceMembershipIDs(ids ...int) *UserUpdate {
+	uu.mutation.AddSpaceMembershipIDs(ids...)
+	return uu
+}
+
+// AddSpaceMemberships adds the "space_memberships" edges to the SharedSpaceMember entity.
+func (uu *UserUpdate) AddSpaceMemberships(s ...*SharedSpaceMember) *UserUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uu.AddSpaceMembershipIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
@@ -521,6 +553,48 @@ func (uu *UserUpdate) RemoveOauthGrants(o ...*OAuthGrant) *UserUpdate {
 		ids[i] = o[i].ID
 	}
 	return uu.RemoveOauthGrantIDs(ids...)
+}
+
+// ClearOwnedSpaces clears all "owned_spaces" edges to the SharedSpace entity.
+func (uu *UserUpdate) ClearOwnedSpaces() *UserUpdate {
+	uu.mutation.ClearOwnedSpaces()
+	return uu
+}
+
+// RemoveOwnedSpaceIDs removes the "owned_spaces" edge to SharedSpace entities by IDs.
+func (uu *UserUpdate) RemoveOwnedSpaceIDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveOwnedSpaceIDs(ids...)
+	return uu
+}
+
+// RemoveOwnedSpaces removes "owned_spaces" edges to SharedSpace entities.
+func (uu *UserUpdate) RemoveOwnedSpaces(s ...*SharedSpace) *UserUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uu.RemoveOwnedSpaceIDs(ids...)
+}
+
+// ClearSpaceMemberships clears all "space_memberships" edges to the SharedSpaceMember entity.
+func (uu *UserUpdate) ClearSpaceMemberships() *UserUpdate {
+	uu.mutation.ClearSpaceMemberships()
+	return uu
+}
+
+// RemoveSpaceMembershipIDs removes the "space_memberships" edge to SharedSpaceMember entities by IDs.
+func (uu *UserUpdate) RemoveSpaceMembershipIDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveSpaceMembershipIDs(ids...)
+	return uu
+}
+
+// RemoveSpaceMemberships removes "space_memberships" edges to SharedSpaceMember entities.
+func (uu *UserUpdate) RemoveSpaceMemberships(s ...*SharedSpaceMember) *UserUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uu.RemoveSpaceMembershipIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1037,6 +1111,96 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if uu.mutation.OwnedSpacesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OwnedSpacesTable,
+			Columns: []string{user.OwnedSpacesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspace.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedOwnedSpacesIDs(); len(nodes) > 0 && !uu.mutation.OwnedSpacesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OwnedSpacesTable,
+			Columns: []string{user.OwnedSpacesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.OwnedSpacesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OwnedSpacesTable,
+			Columns: []string{user.OwnedSpacesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uu.mutation.SpaceMembershipsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SpaceMembershipsTable,
+			Columns: []string{user.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedSpaceMembershipsIDs(); len(nodes) > 0 && !uu.mutation.SpaceMembershipsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SpaceMembershipsTable,
+			Columns: []string{user.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.SpaceMembershipsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SpaceMembershipsTable,
+			Columns: []string{user.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -1363,6 +1527,36 @@ func (uuo *UserUpdateOne) AddOauthGrants(o ...*OAuthGrant) *UserUpdateOne {
 	return uuo.AddOauthGrantIDs(ids...)
 }
 
+// AddOwnedSpaceIDs adds the "owned_spaces" edge to the SharedSpace entity by IDs.
+func (uuo *UserUpdateOne) AddOwnedSpaceIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddOwnedSpaceIDs(ids...)
+	return uuo
+}
+
+// AddOwnedSpaces adds the "owned_spaces" edges to the SharedSpace entity.
+func (uuo *UserUpdateOne) AddOwnedSpaces(s ...*SharedSpace) *UserUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uuo.AddOwnedSpaceIDs(ids...)
+}
+
+// AddSpaceMembershipIDs adds the "space_memberships" edge to the SharedSpaceMember entity by IDs.
+func (uuo *UserUpdateOne) AddSpaceMembershipIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddSpaceMembershipIDs(ids...)
+	return uuo
+}
+
+// AddSpaceMemberships adds the "space_memberships" edges to the SharedSpaceMember entity.
+func (uuo *UserUpdateOne) AddSpaceMemberships(s ...*SharedSpaceMember) *UserUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uuo.AddSpaceMembershipIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
@@ -1540,6 +1734,48 @@ func (uuo *UserUpdateOne) RemoveOauthGrants(o ...*OAuthGrant) *UserUpdateOne {
 		ids[i] = o[i].ID
 	}
 	return uuo.RemoveOauthGrantIDs(ids...)
+}
+
+// ClearOwnedSpaces clears all "owned_spaces" edges to the SharedSpace entity.
+func (uuo *UserUpdateOne) ClearOwnedSpaces() *UserUpdateOne {
+	uuo.mutation.ClearOwnedSpaces()
+	return uuo
+}
+
+// RemoveOwnedSpaceIDs removes the "owned_spaces" edge to SharedSpace entities by IDs.
+func (uuo *UserUpdateOne) RemoveOwnedSpaceIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveOwnedSpaceIDs(ids...)
+	return uuo
+}
+
+// RemoveOwnedSpaces removes "owned_spaces" edges to SharedSpace entities.
+func (uuo *UserUpdateOne) RemoveOwnedSpaces(s ...*SharedSpace) *UserUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uuo.RemoveOwnedSpaceIDs(ids...)
+}
+
+// ClearSpaceMemberships clears all "space_memberships" edges to the SharedSpaceMember entity.
+func (uuo *UserUpdateOne) ClearSpaceMemberships() *UserUpdateOne {
+	uuo.mutation.ClearSpaceMemberships()
+	return uuo
+}
+
+// RemoveSpaceMembershipIDs removes the "space_memberships" edge to SharedSpaceMember entities by IDs.
+func (uuo *UserUpdateOne) RemoveSpaceMembershipIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveSpaceMembershipIDs(ids...)
+	return uuo
+}
+
+// RemoveSpaceMemberships removes "space_memberships" edges to SharedSpaceMember entities.
+func (uuo *UserUpdateOne) RemoveSpaceMemberships(s ...*SharedSpaceMember) *UserUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uuo.RemoveSpaceMembershipIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -2079,6 +2315,96 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(oauthgrant.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.OwnedSpacesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OwnedSpacesTable,
+			Columns: []string{user.OwnedSpacesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspace.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedOwnedSpacesIDs(); len(nodes) > 0 && !uuo.mutation.OwnedSpacesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OwnedSpacesTable,
+			Columns: []string{user.OwnedSpacesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.OwnedSpacesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OwnedSpacesTable,
+			Columns: []string{user.OwnedSpacesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.SpaceMembershipsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SpaceMembershipsTable,
+			Columns: []string{user.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedSpaceMembershipsIDs(); len(nodes) > 0 && !uuo.mutation.SpaceMembershipsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SpaceMembershipsTable,
+			Columns: []string{user.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.SpaceMembershipsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SpaceMembershipsTable,
+			Columns: []string{user.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

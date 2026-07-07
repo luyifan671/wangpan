@@ -41,5 +41,6 @@ func (Group) Edges() []ent.Edge {
 			Ref("groups").
 			Field("storage_policy_id").
 			Unique(),
+		edge.To("space_memberships", SharedSpaceMember.Type),
 	}
 }

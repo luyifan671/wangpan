@@ -28,6 +28,8 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/passkey"
 	"github.com/cloudreve/Cloudreve/v4/ent/setting"
 	"github.com/cloudreve/Cloudreve/v4/ent/share"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspace"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
 	"github.com/cloudreve/Cloudreve/v4/ent/storagepolicy"
 	"github.com/cloudreve/Cloudreve/v4/ent/task"
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
@@ -66,6 +68,10 @@ type Client struct {
 	Setting *SettingClient
 	// Share is the client for interacting with the Share builders.
 	Share *ShareClient
+	// SharedSpace is the client for interacting with the SharedSpace builders.
+	SharedSpace *SharedSpaceClient
+	// SharedSpaceMember is the client for interacting with the SharedSpaceMember builders.
+	SharedSpaceMember *SharedSpaceMemberClient
 	// StoragePolicy is the client for interacting with the StoragePolicy builders.
 	StoragePolicy *StoragePolicyClient
 	// Task is the client for interacting with the Task builders.
@@ -96,6 +102,8 @@ func (c *Client) init() {
 	c.Passkey = NewPasskeyClient(c.config)
 	c.Setting = NewSettingClient(c.config)
 	c.Share = NewShareClient(c.config)
+	c.SharedSpace = NewSharedSpaceClient(c.config)
+	c.SharedSpaceMember = NewSharedSpaceMemberClient(c.config)
 	c.StoragePolicy = NewStoragePolicyClient(c.config)
 	c.Task = NewTaskClient(c.config)
 	c.User = NewUserClient(c.config)
@@ -189,24 +197,26 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		DavAccount:    NewDavAccountClient(cfg),
-		DirectLink:    NewDirectLinkClient(cfg),
-		Entity:        NewEntityClient(cfg),
-		File:          NewFileClient(cfg),
-		FsEvent:       NewFsEventClient(cfg),
-		Group:         NewGroupClient(cfg),
-		Metadata:      NewMetadataClient(cfg),
-		Node:          NewNodeClient(cfg),
-		OAuthClient:   NewOAuthClientClient(cfg),
-		OAuthGrant:    NewOAuthGrantClient(cfg),
-		Passkey:       NewPasskeyClient(cfg),
-		Setting:       NewSettingClient(cfg),
-		Share:         NewShareClient(cfg),
-		StoragePolicy: NewStoragePolicyClient(cfg),
-		Task:          NewTaskClient(cfg),
-		User:          NewUserClient(cfg),
+		ctx:               ctx,
+		config:            cfg,
+		DavAccount:        NewDavAccountClient(cfg),
+		DirectLink:        NewDirectLinkClient(cfg),
+		Entity:            NewEntityClient(cfg),
+		File:              NewFileClient(cfg),
+		FsEvent:           NewFsEventClient(cfg),
+		Group:             NewGroupClient(cfg),
+		Metadata:          NewMetadataClient(cfg),
+		Node:              NewNodeClient(cfg),
+		OAuthClient:       NewOAuthClientClient(cfg),
+		OAuthGrant:        NewOAuthGrantClient(cfg),
+		Passkey:           NewPasskeyClient(cfg),
+		Setting:           NewSettingClient(cfg),
+		Share:             NewShareClient(cfg),
+		SharedSpace:       NewSharedSpaceClient(cfg),
+		SharedSpaceMember: NewSharedSpaceMemberClient(cfg),
+		StoragePolicy:     NewStoragePolicyClient(cfg),
+		Task:              NewTaskClient(cfg),
+		User:              NewUserClient(cfg),
 	}, nil
 }
 
@@ -224,24 +234,26 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		DavAccount:    NewDavAccountClient(cfg),
-		DirectLink:    NewDirectLinkClient(cfg),
-		Entity:        NewEntityClient(cfg),
-		File:          NewFileClient(cfg),
-		FsEvent:       NewFsEventClient(cfg),
-		Group:         NewGroupClient(cfg),
-		Metadata:      NewMetadataClient(cfg),
-		Node:          NewNodeClient(cfg),
-		OAuthClient:   NewOAuthClientClient(cfg),
-		OAuthGrant:    NewOAuthGrantClient(cfg),
-		Passkey:       NewPasskeyClient(cfg),
-		Setting:       NewSettingClient(cfg),
-		Share:         NewShareClient(cfg),
-		StoragePolicy: NewStoragePolicyClient(cfg),
-		Task:          NewTaskClient(cfg),
-		User:          NewUserClient(cfg),
+		ctx:               ctx,
+		config:            cfg,
+		DavAccount:        NewDavAccountClient(cfg),
+		DirectLink:        NewDirectLinkClient(cfg),
+		Entity:            NewEntityClient(cfg),
+		File:              NewFileClient(cfg),
+		FsEvent:           NewFsEventClient(cfg),
+		Group:             NewGroupClient(cfg),
+		Metadata:          NewMetadataClient(cfg),
+		Node:              NewNodeClient(cfg),
+		OAuthClient:       NewOAuthClientClient(cfg),
+		OAuthGrant:        NewOAuthGrantClient(cfg),
+		Passkey:           NewPasskeyClient(cfg),
+		Setting:           NewSettingClient(cfg),
+		Share:             NewShareClient(cfg),
+		SharedSpace:       NewSharedSpaceClient(cfg),
+		SharedSpaceMember: NewSharedSpaceMemberClient(cfg),
+		StoragePolicy:     NewStoragePolicyClient(cfg),
+		Task:              NewTaskClient(cfg),
+		User:              NewUserClient(cfg),
 	}, nil
 }
 
@@ -273,7 +285,7 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.DavAccount, c.DirectLink, c.Entity, c.File, c.FsEvent, c.Group, c.Metadata,
 		c.Node, c.OAuthClient, c.OAuthGrant, c.Passkey, c.Setting, c.Share,
-		c.StoragePolicy, c.Task, c.User,
+		c.SharedSpace, c.SharedSpaceMember, c.StoragePolicy, c.Task, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -285,7 +297,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.DavAccount, c.DirectLink, c.Entity, c.File, c.FsEvent, c.Group, c.Metadata,
 		c.Node, c.OAuthClient, c.OAuthGrant, c.Passkey, c.Setting, c.Share,
-		c.StoragePolicy, c.Task, c.User,
+		c.SharedSpace, c.SharedSpaceMember, c.StoragePolicy, c.Task, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -320,6 +332,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Setting.mutate(ctx, m)
 	case *ShareMutation:
 		return c.Share.mutate(ctx, m)
+	case *SharedSpaceMutation:
+		return c.SharedSpace.mutate(ctx, m)
+	case *SharedSpaceMemberMutation:
+		return c.SharedSpaceMember.mutate(ctx, m)
 	case *StoragePolicyMutation:
 		return c.StoragePolicy.mutate(ctx, m)
 	case *TaskMutation:
@@ -1362,6 +1378,22 @@ func (c *GroupClient) QueryStoragePolicies(gr *Group) *StoragePolicyQuery {
 			sqlgraph.From(group.Table, group.FieldID, id),
 			sqlgraph.To(storagepolicy.Table, storagepolicy.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, group.StoragePoliciesTable, group.StoragePoliciesColumn),
+		)
+		fromV = sqlgraph.Neighbors(gr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySpaceMemberships queries the space_memberships edge of a Group.
+func (c *GroupClient) QuerySpaceMemberships(gr *Group) *SharedSpaceMemberQuery {
+	query := (&SharedSpaceMemberClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := gr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(group.Table, group.FieldID, id),
+			sqlgraph.To(sharedspacemember.Table, sharedspacemember.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, group.SpaceMembershipsTable, group.SpaceMembershipsColumn),
 		)
 		fromV = sqlgraph.Neighbors(gr.driver.Dialect(), step)
 		return fromV, nil
@@ -2469,6 +2501,372 @@ func (c *ShareClient) mutate(ctx context.Context, m *ShareMutation) (Value, erro
 	}
 }
 
+// SharedSpaceClient is a client for the SharedSpace schema.
+type SharedSpaceClient struct {
+	config
+}
+
+// NewSharedSpaceClient returns a client for the SharedSpace from the given config.
+func NewSharedSpaceClient(c config) *SharedSpaceClient {
+	return &SharedSpaceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `sharedspace.Hooks(f(g(h())))`.
+func (c *SharedSpaceClient) Use(hooks ...Hook) {
+	c.hooks.SharedSpace = append(c.hooks.SharedSpace, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `sharedspace.Intercept(f(g(h())))`.
+func (c *SharedSpaceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SharedSpace = append(c.inters.SharedSpace, interceptors...)
+}
+
+// Create returns a builder for creating a SharedSpace entity.
+func (c *SharedSpaceClient) Create() *SharedSpaceCreate {
+	mutation := newSharedSpaceMutation(c.config, OpCreate)
+	return &SharedSpaceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SharedSpace entities.
+func (c *SharedSpaceClient) CreateBulk(builders ...*SharedSpaceCreate) *SharedSpaceCreateBulk {
+	return &SharedSpaceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SharedSpaceClient) MapCreateBulk(slice any, setFunc func(*SharedSpaceCreate, int)) *SharedSpaceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SharedSpaceCreateBulk{err: fmt.Errorf("calling to SharedSpaceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SharedSpaceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SharedSpaceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SharedSpace.
+func (c *SharedSpaceClient) Update() *SharedSpaceUpdate {
+	mutation := newSharedSpaceMutation(c.config, OpUpdate)
+	return &SharedSpaceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SharedSpaceClient) UpdateOne(ss *SharedSpace) *SharedSpaceUpdateOne {
+	mutation := newSharedSpaceMutation(c.config, OpUpdateOne, withSharedSpace(ss))
+	return &SharedSpaceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SharedSpaceClient) UpdateOneID(id int) *SharedSpaceUpdateOne {
+	mutation := newSharedSpaceMutation(c.config, OpUpdateOne, withSharedSpaceID(id))
+	return &SharedSpaceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SharedSpace.
+func (c *SharedSpaceClient) Delete() *SharedSpaceDelete {
+	mutation := newSharedSpaceMutation(c.config, OpDelete)
+	return &SharedSpaceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SharedSpaceClient) DeleteOne(ss *SharedSpace) *SharedSpaceDeleteOne {
+	return c.DeleteOneID(ss.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SharedSpaceClient) DeleteOneID(id int) *SharedSpaceDeleteOne {
+	builder := c.Delete().Where(sharedspace.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SharedSpaceDeleteOne{builder}
+}
+
+// Query returns a query builder for SharedSpace.
+func (c *SharedSpaceClient) Query() *SharedSpaceQuery {
+	return &SharedSpaceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSharedSpace},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SharedSpace entity by its id.
+func (c *SharedSpaceClient) Get(ctx context.Context, id int) (*SharedSpace, error) {
+	return c.Query().Where(sharedspace.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SharedSpaceClient) GetX(ctx context.Context, id int) *SharedSpace {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryOwner queries the owner edge of a SharedSpace.
+func (c *SharedSpaceClient) QueryOwner(ss *SharedSpace) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ss.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sharedspace.Table, sharedspace.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, sharedspace.OwnerTable, sharedspace.OwnerColumn),
+		)
+		fromV = sqlgraph.Neighbors(ss.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMembers queries the members edge of a SharedSpace.
+func (c *SharedSpaceClient) QueryMembers(ss *SharedSpace) *SharedSpaceMemberQuery {
+	query := (&SharedSpaceMemberClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ss.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sharedspace.Table, sharedspace.FieldID, id),
+			sqlgraph.To(sharedspacemember.Table, sharedspacemember.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, sharedspace.MembersTable, sharedspace.MembersColumn),
+		)
+		fromV = sqlgraph.Neighbors(ss.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRootFile queries the root_file edge of a SharedSpace.
+func (c *SharedSpaceClient) QueryRootFile(ss *SharedSpace) *FileQuery {
+	query := (&FileClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ss.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sharedspace.Table, sharedspace.FieldID, id),
+			sqlgraph.To(file.Table, file.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, sharedspace.RootFileTable, sharedspace.RootFileColumn),
+		)
+		fromV = sqlgraph.Neighbors(ss.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SharedSpaceClient) Hooks() []Hook {
+	hooks := c.hooks.SharedSpace
+	return append(hooks[:len(hooks):len(hooks)], sharedspace.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *SharedSpaceClient) Interceptors() []Interceptor {
+	inters := c.inters.SharedSpace
+	return append(inters[:len(inters):len(inters)], sharedspace.Interceptors[:]...)
+}
+
+func (c *SharedSpaceClient) mutate(ctx context.Context, m *SharedSpaceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SharedSpaceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SharedSpaceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SharedSpaceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SharedSpaceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SharedSpace mutation op: %q", m.Op())
+	}
+}
+
+// SharedSpaceMemberClient is a client for the SharedSpaceMember schema.
+type SharedSpaceMemberClient struct {
+	config
+}
+
+// NewSharedSpaceMemberClient returns a client for the SharedSpaceMember from the given config.
+func NewSharedSpaceMemberClient(c config) *SharedSpaceMemberClient {
+	return &SharedSpaceMemberClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `sharedspacemember.Hooks(f(g(h())))`.
+func (c *SharedSpaceMemberClient) Use(hooks ...Hook) {
+	c.hooks.SharedSpaceMember = append(c.hooks.SharedSpaceMember, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `sharedspacemember.Intercept(f(g(h())))`.
+func (c *SharedSpaceMemberClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SharedSpaceMember = append(c.inters.SharedSpaceMember, interceptors...)
+}
+
+// Create returns a builder for creating a SharedSpaceMember entity.
+func (c *SharedSpaceMemberClient) Create() *SharedSpaceMemberCreate {
+	mutation := newSharedSpaceMemberMutation(c.config, OpCreate)
+	return &SharedSpaceMemberCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SharedSpaceMember entities.
+func (c *SharedSpaceMemberClient) CreateBulk(builders ...*SharedSpaceMemberCreate) *SharedSpaceMemberCreateBulk {
+	return &SharedSpaceMemberCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SharedSpaceMemberClient) MapCreateBulk(slice any, setFunc func(*SharedSpaceMemberCreate, int)) *SharedSpaceMemberCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SharedSpaceMemberCreateBulk{err: fmt.Errorf("calling to SharedSpaceMemberClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SharedSpaceMemberCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SharedSpaceMemberCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SharedSpaceMember.
+func (c *SharedSpaceMemberClient) Update() *SharedSpaceMemberUpdate {
+	mutation := newSharedSpaceMemberMutation(c.config, OpUpdate)
+	return &SharedSpaceMemberUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SharedSpaceMemberClient) UpdateOne(ssm *SharedSpaceMember) *SharedSpaceMemberUpdateOne {
+	mutation := newSharedSpaceMemberMutation(c.config, OpUpdateOne, withSharedSpaceMember(ssm))
+	return &SharedSpaceMemberUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SharedSpaceMemberClient) UpdateOneID(id int) *SharedSpaceMemberUpdateOne {
+	mutation := newSharedSpaceMemberMutation(c.config, OpUpdateOne, withSharedSpaceMemberID(id))
+	return &SharedSpaceMemberUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SharedSpaceMember.
+func (c *SharedSpaceMemberClient) Delete() *SharedSpaceMemberDelete {
+	mutation := newSharedSpaceMemberMutation(c.config, OpDelete)
+	return &SharedSpaceMemberDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SharedSpaceMemberClient) DeleteOne(ssm *SharedSpaceMember) *SharedSpaceMemberDeleteOne {
+	return c.DeleteOneID(ssm.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SharedSpaceMemberClient) DeleteOneID(id int) *SharedSpaceMemberDeleteOne {
+	builder := c.Delete().Where(sharedspacemember.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SharedSpaceMemberDeleteOne{builder}
+}
+
+// Query returns a query builder for SharedSpaceMember.
+func (c *SharedSpaceMemberClient) Query() *SharedSpaceMemberQuery {
+	return &SharedSpaceMemberQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSharedSpaceMember},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SharedSpaceMember entity by its id.
+func (c *SharedSpaceMemberClient) Get(ctx context.Context, id int) (*SharedSpaceMember, error) {
+	return c.Query().Where(sharedspacemember.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SharedSpaceMemberClient) GetX(ctx context.Context, id int) *SharedSpaceMember {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySharedSpace queries the shared_space edge of a SharedSpaceMember.
+func (c *SharedSpaceMemberClient) QuerySharedSpace(ssm *SharedSpaceMember) *SharedSpaceQuery {
+	query := (&SharedSpaceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ssm.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sharedspacemember.Table, sharedspacemember.FieldID, id),
+			sqlgraph.To(sharedspace.Table, sharedspace.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, sharedspacemember.SharedSpaceTable, sharedspacemember.SharedSpaceColumn),
+		)
+		fromV = sqlgraph.Neighbors(ssm.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUser queries the user edge of a SharedSpaceMember.
+func (c *SharedSpaceMemberClient) QueryUser(ssm *SharedSpaceMember) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ssm.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sharedspacemember.Table, sharedspacemember.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, sharedspacemember.UserTable, sharedspacemember.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(ssm.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryGroup queries the group edge of a SharedSpaceMember.
+func (c *SharedSpaceMemberClient) QueryGroup(ssm *SharedSpaceMember) *GroupQuery {
+	query := (&GroupClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ssm.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sharedspacemember.Table, sharedspacemember.FieldID, id),
+			sqlgraph.To(group.Table, group.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, sharedspacemember.GroupTable, sharedspacemember.GroupColumn),
+		)
+		fromV = sqlgraph.Neighbors(ssm.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SharedSpaceMemberClient) Hooks() []Hook {
+	hooks := c.hooks.SharedSpaceMember
+	return append(hooks[:len(hooks):len(hooks)], sharedspacemember.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *SharedSpaceMemberClient) Interceptors() []Interceptor {
+	inters := c.inters.SharedSpaceMember
+	return append(inters[:len(inters):len(inters)], sharedspacemember.Interceptors[:]...)
+}
+
+func (c *SharedSpaceMemberClient) mutate(ctx context.Context, m *SharedSpaceMemberMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SharedSpaceMemberCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SharedSpaceMemberUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SharedSpaceMemberUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SharedSpaceMemberDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SharedSpaceMember mutation op: %q", m.Op())
+	}
+}
+
 // StoragePolicyClient is a client for the StoragePolicy schema.
 type StoragePolicyClient struct {
 	config
@@ -3071,6 +3469,38 @@ func (c *UserClient) QueryOauthGrants(u *User) *OAuthGrantQuery {
 	return query
 }
 
+// QueryOwnedSpaces queries the owned_spaces edge of a User.
+func (c *UserClient) QueryOwnedSpaces(u *User) *SharedSpaceQuery {
+	query := (&SharedSpaceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(sharedspace.Table, sharedspace.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.OwnedSpacesTable, user.OwnedSpacesColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySpaceMemberships queries the space_memberships edge of a User.
+func (c *UserClient) QuerySpaceMemberships(u *User) *SharedSpaceMemberQuery {
+	query := (&SharedSpaceMemberClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(sharedspacemember.Table, sharedspacemember.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.SpaceMembershipsTable, user.SpaceMembershipsColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	hooks := c.hooks.User
@@ -3102,13 +3532,13 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 type (
 	hooks struct {
 		DavAccount, DirectLink, Entity, File, FsEvent, Group, Metadata, Node,
-		OAuthClient, OAuthGrant, Passkey, Setting, Share, StoragePolicy, Task,
-		User []ent.Hook
+		OAuthClient, OAuthGrant, Passkey, Setting, Share, SharedSpace,
+		SharedSpaceMember, StoragePolicy, Task, User []ent.Hook
 	}
 	inters struct {
 		DavAccount, DirectLink, Entity, File, FsEvent, Group, Metadata, Node,
-		OAuthClient, OAuthGrant, Passkey, Setting, Share, StoragePolicy, Task,
-		User []ent.Interceptor
+		OAuthClient, OAuthGrant, Passkey, Setting, Share, SharedSpace,
+		SharedSpaceMember, StoragePolicy, Task, User []ent.Interceptor
 	}
 )
 

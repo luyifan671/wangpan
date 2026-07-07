@@ -411,6 +411,74 @@ var (
 			},
 		},
 	}
+	// SharedSpacesColumns holds the columns for the "shared_spaces" table.
+	SharedSpacesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "name", Type: field.TypeString, Size: 255},
+		{Name: "description", Type: field.TypeString, Nullable: true, Size: 1000},
+		{Name: "root_file_id", Type: field.TypeInt, Nullable: true},
+		{Name: "owner_id", Type: field.TypeInt},
+	}
+	// SharedSpacesTable holds the schema information for the "shared_spaces" table.
+	SharedSpacesTable = &schema.Table{
+		Name:       "shared_spaces",
+		Columns:    SharedSpacesColumns,
+		PrimaryKey: []*schema.Column{SharedSpacesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "shared_spaces_files_root_file",
+				Columns:    []*schema.Column{SharedSpacesColumns[6]},
+				RefColumns: []*schema.Column{FilesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "shared_spaces_users_owned_spaces",
+				Columns:    []*schema.Column{SharedSpacesColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// SharedSpaceMembersColumns holds the columns for the "shared_space_members" table.
+	SharedSpaceMembersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "role", Type: field.TypeEnum, Enums: []string{"admin", "editor", "viewer"}, Default: "viewer"},
+		{Name: "group_id", Type: field.TypeInt, Nullable: true},
+		{Name: "shared_space_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt, Nullable: true},
+	}
+	// SharedSpaceMembersTable holds the schema information for the "shared_space_members" table.
+	SharedSpaceMembersTable = &schema.Table{
+		Name:       "shared_space_members",
+		Columns:    SharedSpaceMembersColumns,
+		PrimaryKey: []*schema.Column{SharedSpaceMembersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "shared_space_members_groups_space_memberships",
+				Columns:    []*schema.Column{SharedSpaceMembersColumns[5]},
+				RefColumns: []*schema.Column{GroupsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "shared_space_members_shared_spaces_members",
+				Columns:    []*schema.Column{SharedSpaceMembersColumns[6]},
+				RefColumns: []*schema.Column{SharedSpacesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "shared_space_members_users_space_memberships",
+				Columns:    []*schema.Column{SharedSpaceMembersColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// StoragePoliciesColumns holds the columns for the "storage_policies" table.
 	StoragePoliciesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -541,6 +609,8 @@ var (
 		PasskeysTable,
 		SettingsTable,
 		SharesTable,
+		SharedSpacesTable,
+		SharedSpaceMembersTable,
 		StoragePoliciesTable,
 		TasksTable,
 		UsersTable,
@@ -564,6 +634,11 @@ func init() {
 	PasskeysTable.ForeignKeys[0].RefTable = UsersTable
 	SharesTable.ForeignKeys[0].RefTable = FilesTable
 	SharesTable.ForeignKeys[1].RefTable = UsersTable
+	SharedSpacesTable.ForeignKeys[0].RefTable = FilesTable
+	SharedSpacesTable.ForeignKeys[1].RefTable = UsersTable
+	SharedSpaceMembersTable.ForeignKeys[0].RefTable = GroupsTable
+	SharedSpaceMembersTable.ForeignKeys[1].RefTable = SharedSpacesTable
+	SharedSpaceMembersTable.ForeignKeys[2].RefTable = UsersTable
 	StoragePoliciesTable.ForeignKeys[0].RefTable = NodesTable
 	TasksTable.ForeignKeys[0].RefTable = UsersTable
 	UsersTable.ForeignKeys[0].RefTable = GroupsTable

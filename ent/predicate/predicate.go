@@ -45,6 +45,12 @@ type Setting func(*sql.Selector)
 // Share is the predicate function for share builders.
 type Share func(*sql.Selector)
 
+// SharedSpace is the predicate function for sharedspace builders.
+type SharedSpace func(*sql.Selector)
+
+// SharedSpaceMember is the predicate function for sharedspacemember builders.
+type SharedSpaceMember func(*sql.Selector)
+
 // StoragePolicy is the predicate function for storagepolicy builders.
 type StoragePolicy func(*sql.Selector)
 

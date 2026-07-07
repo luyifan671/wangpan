@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/cloudreve/Cloudreve/v4/ent/group"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
 	"github.com/cloudreve/Cloudreve/v4/ent/storagepolicy"
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
 	"github.com/cloudreve/Cloudreve/v4/inventory/types"
@@ -160,6 +161,21 @@ func (gc *GroupCreate) SetNillableStoragePoliciesID(id *int) *GroupCreate {
 // SetStoragePolicies sets the "storage_policies" edge to the StoragePolicy entity.
 func (gc *GroupCreate) SetStoragePolicies(s *StoragePolicy) *GroupCreate {
 	return gc.SetStoragePoliciesID(s.ID)
+}
+
+// AddSpaceMembershipIDs adds the "space_memberships" edge to the SharedSpaceMember entity by IDs.
+func (gc *GroupCreate) AddSpaceMembershipIDs(ids ...int) *GroupCreate {
+	gc.mutation.AddSpaceMembershipIDs(ids...)
+	return gc
+}
+
+// AddSpaceMemberships adds the "space_memberships" edges to the SharedSpaceMember entity.
+func (gc *GroupCreate) AddSpaceMemberships(s ...*SharedSpaceMember) *GroupCreate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return gc.AddSpaceMembershipIDs(ids...)
 }
 
 // Mutation returns the GroupMutation object of the builder.
@@ -331,6 +347,22 @@ func (gc *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.StoragePolicyID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := gc.mutation.SpaceMembershipsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.SpaceMembershipsTable,
+			Columns: []string{group.SpaceMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sharedspacemember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

@@ -887,6 +887,52 @@ func HasOauthGrantsWith(preds ...predicate.OAuthGrant) predicate.User {
 	})
 }
 
+// HasOwnedSpaces applies the HasEdge predicate on the "owned_spaces" edge.
+func HasOwnedSpaces() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OwnedSpacesTable, OwnedSpacesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOwnedSpacesWith applies the HasEdge predicate on the "owned_spaces" edge with a given conditions (other predicates).
+func HasOwnedSpacesWith(preds ...predicate.SharedSpace) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newOwnedSpacesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasSpaceMemberships applies the HasEdge predicate on the "space_memberships" edge.
+func HasSpaceMemberships() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, SpaceMembershipsTable, SpaceMembershipsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSpaceMembershipsWith applies the HasEdge predicate on the "space_memberships" edge with a given conditions (other predicates).
+func HasSpaceMembershipsWith(preds ...predicate.SharedSpaceMember) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newSpaceMembershipsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.User) predicate.User {
 	return predicate.User(sql.AndPredicates(predicates...))

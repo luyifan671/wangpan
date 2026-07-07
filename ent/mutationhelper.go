@@ -82,6 +82,18 @@ func (m *ShareMutation) SetRawID(t int) {
 
 // SetUpdatedAt sets the "updated_at" field.
 
+func (m *SharedSpaceMutation) SetRawID(t int) {
+	m.id = &t
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+
+func (m *SharedSpaceMemberMutation) SetRawID(t int) {
+	m.id = &t
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+
 func (m *StoragePolicyMutation) SetRawID(t int) {
 	m.id = &t
 }

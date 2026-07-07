@@ -25,6 +25,8 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/predicate"
 	"github.com/cloudreve/Cloudreve/v4/ent/setting"
 	"github.com/cloudreve/Cloudreve/v4/ent/share"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspace"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
 	"github.com/cloudreve/Cloudreve/v4/ent/storagepolicy"
 	"github.com/cloudreve/Cloudreve/v4/ent/task"
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
@@ -43,22 +45,24 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeDavAccount    = "DavAccount"
-	TypeDirectLink    = "DirectLink"
-	TypeEntity        = "Entity"
-	TypeFile          = "File"
-	TypeFsEvent       = "FsEvent"
-	TypeGroup         = "Group"
-	TypeMetadata      = "Metadata"
-	TypeNode          = "Node"
-	TypeOAuthClient   = "OAuthClient"
-	TypeOAuthGrant    = "OAuthGrant"
-	TypePasskey       = "Passkey"
-	TypeSetting       = "Setting"
-	TypeShare         = "Share"
-	TypeStoragePolicy = "StoragePolicy"
-	TypeTask          = "Task"
-	TypeUser          = "User"
+	TypeDavAccount        = "DavAccount"
+	TypeDirectLink        = "DirectLink"
+	TypeEntity            = "Entity"
+	TypeFile              = "File"
+	TypeFsEvent           = "FsEvent"
+	TypeGroup             = "Group"
+	TypeMetadata          = "Metadata"
+	TypeNode              = "Node"
+	TypeOAuthClient       = "OAuthClient"
+	TypeOAuthGrant        = "OAuthGrant"
+	TypePasskey           = "Passkey"
+	TypeSetting           = "Setting"
+	TypeShare             = "Share"
+	TypeSharedSpace       = "SharedSpace"
+	TypeSharedSpaceMember = "SharedSpaceMember"
+	TypeStoragePolicy     = "StoragePolicy"
+	TypeTask              = "Task"
+	TypeUser              = "User"
 )
 
 // DavAccountMutation represents an operation that mutates the DavAccount nodes in the graph.
@@ -5317,28 +5321,31 @@ func (m *FsEventMutation) ResetEdge(name string) error {
 // GroupMutation represents an operation that mutates the Group nodes in the graph.
 type GroupMutation struct {
 	config
-	op                      Op
-	typ                     string
-	id                      *int
-	created_at              *time.Time
-	updated_at              *time.Time
-	deleted_at              *time.Time
-	name                    *string
-	max_storage             *int64
-	addmax_storage          *int64
-	speed_limit             *int
-	addspeed_limit          *int
-	permissions             **boolset.BooleanSet
-	settings                **types.GroupSetting
-	clearedFields           map[string]struct{}
-	users                   map[int]struct{}
-	removedusers            map[int]struct{}
-	clearedusers            bool
-	storage_policies        *int
-	clearedstorage_policies bool
-	done                    bool
-	oldValue                func(context.Context) (*Group, error)
-	predicates              []predicate.Group
+	op                       Op
+	typ                      string
+	id                       *int
+	created_at               *time.Time
+	updated_at               *time.Time
+	deleted_at               *time.Time
+	name                     *string
+	max_storage              *int64
+	addmax_storage           *int64
+	speed_limit              *int
+	addspeed_limit           *int
+	permissions              **boolset.BooleanSet
+	settings                 **types.GroupSetting
+	clearedFields            map[string]struct{}
+	users                    map[int]struct{}
+	removedusers             map[int]struct{}
+	clearedusers             bool
+	storage_policies         *int
+	clearedstorage_policies  bool
+	space_memberships        map[int]struct{}
+	removedspace_memberships map[int]struct{}
+	clearedspace_memberships bool
+	done                     bool
+	oldValue                 func(context.Context) (*Group, error)
+	predicates               []predicate.Group
 }
 
 var _ ent.Mutation = (*GroupMutation)(nil)
@@ -5964,6 +5971,60 @@ func (m *GroupMutation) ResetStoragePolicies() {
 	m.clearedstorage_policies = false
 }
 
+// AddSpaceMembershipIDs adds the "space_memberships" edge to the SharedSpaceMember entity by ids.
+func (m *GroupMutation) AddSpaceMembershipIDs(ids ...int) {
+	if m.space_memberships == nil {
+		m.space_memberships = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.space_memberships[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSpaceMemberships clears the "space_memberships" edge to the SharedSpaceMember entity.
+func (m *GroupMutation) ClearSpaceMemberships() {
+	m.clearedspace_memberships = true
+}
+
+// SpaceMembershipsCleared reports if the "space_memberships" edge to the SharedSpaceMember entity was cleared.
+func (m *GroupMutation) SpaceMembershipsCleared() bool {
+	return m.clearedspace_memberships
+}
+
+// RemoveSpaceMembershipIDs removes the "space_memberships" edge to the SharedSpaceMember entity by IDs.
+func (m *GroupMutation) RemoveSpaceMembershipIDs(ids ...int) {
+	if m.removedspace_memberships == nil {
+		m.removedspace_memberships = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.space_memberships, ids[i])
+		m.removedspace_memberships[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSpaceMemberships returns the removed IDs of the "space_memberships" edge to the SharedSpaceMember entity.
+func (m *GroupMutation) RemovedSpaceMembershipsIDs() (ids []int) {
+	for id := range m.removedspace_memberships {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SpaceMembershipsIDs returns the "space_memberships" edge IDs in the mutation.
+func (m *GroupMutation) SpaceMembershipsIDs() (ids []int) {
+	for id := range m.space_memberships {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSpaceMemberships resets all changes to the "space_memberships" edge.
+func (m *GroupMutation) ResetSpaceMemberships() {
+	m.space_memberships = nil
+	m.clearedspace_memberships = false
+	m.removedspace_memberships = nil
+}
+
 // Where appends a list predicates to the GroupMutation builder.
 func (m *GroupMutation) Where(ps ...predicate.Group) {
 	m.predicates = append(m.predicates, ps...)
@@ -6293,12 +6354,15 @@ func (m *GroupMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *GroupMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.users != nil {
 		edges = append(edges, group.EdgeUsers)
 	}
 	if m.storage_policies != nil {
 		edges = append(edges, group.EdgeStoragePolicies)
+	}
+	if m.space_memberships != nil {
+		edges = append(edges, group.EdgeSpaceMemberships)
 	}
 	return edges
 }
@@ -6317,15 +6381,24 @@ func (m *GroupMutation) AddedIDs(name string) []ent.Value {
 		if id := m.storage_policies; id != nil {
 			return []ent.Value{*id}
 		}
+	case group.EdgeSpaceMemberships:
+		ids := make([]ent.Value, 0, len(m.space_memberships))
+		for id := range m.space_memberships {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *GroupMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.removedusers != nil {
 		edges = append(edges, group.EdgeUsers)
+	}
+	if m.removedspace_memberships != nil {
+		edges = append(edges, group.EdgeSpaceMemberships)
 	}
 	return edges
 }
@@ -6340,18 +6413,27 @@ func (m *GroupMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case group.EdgeSpaceMemberships:
+		ids := make([]ent.Value, 0, len(m.removedspace_memberships))
+		for id := range m.removedspace_memberships {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *GroupMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedusers {
 		edges = append(edges, group.EdgeUsers)
 	}
 	if m.clearedstorage_policies {
 		edges = append(edges, group.EdgeStoragePolicies)
+	}
+	if m.clearedspace_memberships {
+		edges = append(edges, group.EdgeSpaceMemberships)
 	}
 	return edges
 }
@@ -6364,6 +6446,8 @@ func (m *GroupMutation) EdgeCleared(name string) bool {
 		return m.clearedusers
 	case group.EdgeStoragePolicies:
 		return m.clearedstorage_policies
+	case group.EdgeSpaceMemberships:
+		return m.clearedspace_memberships
 	}
 	return false
 }
@@ -6388,6 +6472,9 @@ func (m *GroupMutation) ResetEdge(name string) error {
 		return nil
 	case group.EdgeStoragePolicies:
 		m.ResetStoragePolicies()
+		return nil
+	case group.EdgeSpaceMemberships:
+		m.ResetSpaceMemberships()
 		return nil
 	}
 	return fmt.Errorf("unknown Group edge %s", name)
@@ -12508,6 +12595,1763 @@ func (m *ShareMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Share edge %s", name)
 }
 
+// SharedSpaceMutation represents an operation that mutates the SharedSpace nodes in the graph.
+type SharedSpaceMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	created_at       *time.Time
+	updated_at       *time.Time
+	deleted_at       *time.Time
+	name             *string
+	description      *string
+	clearedFields    map[string]struct{}
+	owner            *int
+	clearedowner     bool
+	members          map[int]struct{}
+	removedmembers   map[int]struct{}
+	clearedmembers   bool
+	root_file        *int
+	clearedroot_file bool
+	done             bool
+	oldValue         func(context.Context) (*SharedSpace, error)
+	predicates       []predicate.SharedSpace
+}
+
+var _ ent.Mutation = (*SharedSpaceMutation)(nil)
+
+// sharedspaceOption allows management of the mutation configuration using functional options.
+type sharedspaceOption func(*SharedSpaceMutation)
+
+// newSharedSpaceMutation creates new mutation for the SharedSpace entity.
+func newSharedSpaceMutation(c config, op Op, opts ...sharedspaceOption) *SharedSpaceMutation {
+	m := &SharedSpaceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSharedSpace,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSharedSpaceID sets the ID field of the mutation.
+func withSharedSpaceID(id int) sharedspaceOption {
+	return func(m *SharedSpaceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *SharedSpace
+		)
+		m.oldValue = func(ctx context.Context) (*SharedSpace, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().SharedSpace.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSharedSpace sets the old SharedSpace of the mutation.
+func withSharedSpace(node *SharedSpace) sharedspaceOption {
+	return func(m *SharedSpaceMutation) {
+		m.oldValue = func(context.Context) (*SharedSpace, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SharedSpaceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SharedSpaceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SharedSpaceMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SharedSpaceMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().SharedSpace.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *SharedSpaceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *SharedSpaceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the SharedSpace entity.
+// If the SharedSpace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *SharedSpaceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *SharedSpaceMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *SharedSpaceMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the SharedSpace entity.
+// If the SharedSpace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *SharedSpaceMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *SharedSpaceMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *SharedSpaceMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the SharedSpace entity.
+// If the SharedSpace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *SharedSpaceMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[sharedspace.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *SharedSpaceMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[sharedspace.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *SharedSpaceMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, sharedspace.FieldDeletedAt)
+}
+
+// SetName sets the "name" field.
+func (m *SharedSpaceMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *SharedSpaceMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the SharedSpace entity.
+// If the SharedSpace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *SharedSpaceMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *SharedSpaceMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *SharedSpaceMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the SharedSpace entity.
+// If the SharedSpace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ClearDescription clears the value of the "description" field.
+func (m *SharedSpaceMutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[sharedspace.FieldDescription] = struct{}{}
+}
+
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *SharedSpaceMutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[sharedspace.FieldDescription]
+	return ok
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *SharedSpaceMutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, sharedspace.FieldDescription)
+}
+
+// SetOwnerID sets the "owner_id" field.
+func (m *SharedSpaceMutation) SetOwnerID(i int) {
+	m.owner = &i
+}
+
+// OwnerID returns the value of the "owner_id" field in the mutation.
+func (m *SharedSpaceMutation) OwnerID() (r int, exists bool) {
+	v := m.owner
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOwnerID returns the old "owner_id" field's value of the SharedSpace entity.
+// If the SharedSpace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMutation) OldOwnerID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOwnerID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOwnerID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOwnerID: %w", err)
+	}
+	return oldValue.OwnerID, nil
+}
+
+// ResetOwnerID resets all changes to the "owner_id" field.
+func (m *SharedSpaceMutation) ResetOwnerID() {
+	m.owner = nil
+}
+
+// SetRootFileID sets the "root_file_id" field.
+func (m *SharedSpaceMutation) SetRootFileID(i int) {
+	m.root_file = &i
+}
+
+// RootFileID returns the value of the "root_file_id" field in the mutation.
+func (m *SharedSpaceMutation) RootFileID() (r int, exists bool) {
+	v := m.root_file
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRootFileID returns the old "root_file_id" field's value of the SharedSpace entity.
+// If the SharedSpace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMutation) OldRootFileID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRootFileID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRootFileID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRootFileID: %w", err)
+	}
+	return oldValue.RootFileID, nil
+}
+
+// ClearRootFileID clears the value of the "root_file_id" field.
+func (m *SharedSpaceMutation) ClearRootFileID() {
+	m.root_file = nil
+	m.clearedFields[sharedspace.FieldRootFileID] = struct{}{}
+}
+
+// RootFileIDCleared returns if the "root_file_id" field was cleared in this mutation.
+func (m *SharedSpaceMutation) RootFileIDCleared() bool {
+	_, ok := m.clearedFields[sharedspace.FieldRootFileID]
+	return ok
+}
+
+// ResetRootFileID resets all changes to the "root_file_id" field.
+func (m *SharedSpaceMutation) ResetRootFileID() {
+	m.root_file = nil
+	delete(m.clearedFields, sharedspace.FieldRootFileID)
+}
+
+// ClearOwner clears the "owner" edge to the User entity.
+func (m *SharedSpaceMutation) ClearOwner() {
+	m.clearedowner = true
+	m.clearedFields[sharedspace.FieldOwnerID] = struct{}{}
+}
+
+// OwnerCleared reports if the "owner" edge to the User entity was cleared.
+func (m *SharedSpaceMutation) OwnerCleared() bool {
+	return m.clearedowner
+}
+
+// OwnerIDs returns the "owner" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// OwnerID instead. It exists only for internal usage by the builders.
+func (m *SharedSpaceMutation) OwnerIDs() (ids []int) {
+	if id := m.owner; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetOwner resets all changes to the "owner" edge.
+func (m *SharedSpaceMutation) ResetOwner() {
+	m.owner = nil
+	m.clearedowner = false
+}
+
+// AddMemberIDs adds the "members" edge to the SharedSpaceMember entity by ids.
+func (m *SharedSpaceMutation) AddMemberIDs(ids ...int) {
+	if m.members == nil {
+		m.members = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.members[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMembers clears the "members" edge to the SharedSpaceMember entity.
+func (m *SharedSpaceMutation) ClearMembers() {
+	m.clearedmembers = true
+}
+
+// MembersCleared reports if the "members" edge to the SharedSpaceMember entity was cleared.
+func (m *SharedSpaceMutation) MembersCleared() bool {
+	return m.clearedmembers
+}
+
+// RemoveMemberIDs removes the "members" edge to the SharedSpaceMember entity by IDs.
+func (m *SharedSpaceMutation) RemoveMemberIDs(ids ...int) {
+	if m.removedmembers == nil {
+		m.removedmembers = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.members, ids[i])
+		m.removedmembers[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMembers returns the removed IDs of the "members" edge to the SharedSpaceMember entity.
+func (m *SharedSpaceMutation) RemovedMembersIDs() (ids []int) {
+	for id := range m.removedmembers {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MembersIDs returns the "members" edge IDs in the mutation.
+func (m *SharedSpaceMutation) MembersIDs() (ids []int) {
+	for id := range m.members {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMembers resets all changes to the "members" edge.
+func (m *SharedSpaceMutation) ResetMembers() {
+	m.members = nil
+	m.clearedmembers = false
+	m.removedmembers = nil
+}
+
+// ClearRootFile clears the "root_file" edge to the File entity.
+func (m *SharedSpaceMutation) ClearRootFile() {
+	m.clearedroot_file = true
+	m.clearedFields[sharedspace.FieldRootFileID] = struct{}{}
+}
+
+// RootFileCleared reports if the "root_file" edge to the File entity was cleared.
+func (m *SharedSpaceMutation) RootFileCleared() bool {
+	return m.RootFileIDCleared() || m.clearedroot_file
+}
+
+// RootFileIDs returns the "root_file" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RootFileID instead. It exists only for internal usage by the builders.
+func (m *SharedSpaceMutation) RootFileIDs() (ids []int) {
+	if id := m.root_file; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRootFile resets all changes to the "root_file" edge.
+func (m *SharedSpaceMutation) ResetRootFile() {
+	m.root_file = nil
+	m.clearedroot_file = false
+}
+
+// Where appends a list predicates to the SharedSpaceMutation builder.
+func (m *SharedSpaceMutation) Where(ps ...predicate.SharedSpace) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SharedSpaceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SharedSpaceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.SharedSpace, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SharedSpaceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SharedSpaceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (SharedSpace).
+func (m *SharedSpaceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SharedSpaceMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.created_at != nil {
+		fields = append(fields, sharedspace.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, sharedspace.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, sharedspace.FieldDeletedAt)
+	}
+	if m.name != nil {
+		fields = append(fields, sharedspace.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, sharedspace.FieldDescription)
+	}
+	if m.owner != nil {
+		fields = append(fields, sharedspace.FieldOwnerID)
+	}
+	if m.root_file != nil {
+		fields = append(fields, sharedspace.FieldRootFileID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SharedSpaceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case sharedspace.FieldCreatedAt:
+		return m.CreatedAt()
+	case sharedspace.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case sharedspace.FieldDeletedAt:
+		return m.DeletedAt()
+	case sharedspace.FieldName:
+		return m.Name()
+	case sharedspace.FieldDescription:
+		return m.Description()
+	case sharedspace.FieldOwnerID:
+		return m.OwnerID()
+	case sharedspace.FieldRootFileID:
+		return m.RootFileID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SharedSpaceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case sharedspace.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case sharedspace.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case sharedspace.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case sharedspace.FieldName:
+		return m.OldName(ctx)
+	case sharedspace.FieldDescription:
+		return m.OldDescription(ctx)
+	case sharedspace.FieldOwnerID:
+		return m.OldOwnerID(ctx)
+	case sharedspace.FieldRootFileID:
+		return m.OldRootFileID(ctx)
+	}
+	return nil, fmt.Errorf("unknown SharedSpace field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SharedSpaceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case sharedspace.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case sharedspace.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case sharedspace.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case sharedspace.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case sharedspace.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case sharedspace.FieldOwnerID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOwnerID(v)
+		return nil
+	case sharedspace.FieldRootFileID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRootFileID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpace field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SharedSpaceMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SharedSpaceMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SharedSpaceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown SharedSpace numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SharedSpaceMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(sharedspace.FieldDeletedAt) {
+		fields = append(fields, sharedspace.FieldDeletedAt)
+	}
+	if m.FieldCleared(sharedspace.FieldDescription) {
+		fields = append(fields, sharedspace.FieldDescription)
+	}
+	if m.FieldCleared(sharedspace.FieldRootFileID) {
+		fields = append(fields, sharedspace.FieldRootFileID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SharedSpaceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SharedSpaceMutation) ClearField(name string) error {
+	switch name {
+	case sharedspace.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	case sharedspace.FieldDescription:
+		m.ClearDescription()
+		return nil
+	case sharedspace.FieldRootFileID:
+		m.ClearRootFileID()
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpace nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SharedSpaceMutation) ResetField(name string) error {
+	switch name {
+	case sharedspace.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case sharedspace.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case sharedspace.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case sharedspace.FieldName:
+		m.ResetName()
+		return nil
+	case sharedspace.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case sharedspace.FieldOwnerID:
+		m.ResetOwnerID()
+		return nil
+	case sharedspace.FieldRootFileID:
+		m.ResetRootFileID()
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpace field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SharedSpaceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.owner != nil {
+		edges = append(edges, sharedspace.EdgeOwner)
+	}
+	if m.members != nil {
+		edges = append(edges, sharedspace.EdgeMembers)
+	}
+	if m.root_file != nil {
+		edges = append(edges, sharedspace.EdgeRootFile)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SharedSpaceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case sharedspace.EdgeOwner:
+		if id := m.owner; id != nil {
+			return []ent.Value{*id}
+		}
+	case sharedspace.EdgeMembers:
+		ids := make([]ent.Value, 0, len(m.members))
+		for id := range m.members {
+			ids = append(ids, id)
+		}
+		return ids
+	case sharedspace.EdgeRootFile:
+		if id := m.root_file; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SharedSpaceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.removedmembers != nil {
+		edges = append(edges, sharedspace.EdgeMembers)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SharedSpaceMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case sharedspace.EdgeMembers:
+		ids := make([]ent.Value, 0, len(m.removedmembers))
+		for id := range m.removedmembers {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SharedSpaceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedowner {
+		edges = append(edges, sharedspace.EdgeOwner)
+	}
+	if m.clearedmembers {
+		edges = append(edges, sharedspace.EdgeMembers)
+	}
+	if m.clearedroot_file {
+		edges = append(edges, sharedspace.EdgeRootFile)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SharedSpaceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case sharedspace.EdgeOwner:
+		return m.clearedowner
+	case sharedspace.EdgeMembers:
+		return m.clearedmembers
+	case sharedspace.EdgeRootFile:
+		return m.clearedroot_file
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SharedSpaceMutation) ClearEdge(name string) error {
+	switch name {
+	case sharedspace.EdgeOwner:
+		m.ClearOwner()
+		return nil
+	case sharedspace.EdgeRootFile:
+		m.ClearRootFile()
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpace unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SharedSpaceMutation) ResetEdge(name string) error {
+	switch name {
+	case sharedspace.EdgeOwner:
+		m.ResetOwner()
+		return nil
+	case sharedspace.EdgeMembers:
+		m.ResetMembers()
+		return nil
+	case sharedspace.EdgeRootFile:
+		m.ResetRootFile()
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpace edge %s", name)
+}
+
+// SharedSpaceMemberMutation represents an operation that mutates the SharedSpaceMember nodes in the graph.
+type SharedSpaceMemberMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int
+	created_at          *time.Time
+	updated_at          *time.Time
+	deleted_at          *time.Time
+	role                *sharedspacemember.Role
+	clearedFields       map[string]struct{}
+	shared_space        *int
+	clearedshared_space bool
+	user                *int
+	cleareduser         bool
+	group               *int
+	clearedgroup        bool
+	done                bool
+	oldValue            func(context.Context) (*SharedSpaceMember, error)
+	predicates          []predicate.SharedSpaceMember
+}
+
+var _ ent.Mutation = (*SharedSpaceMemberMutation)(nil)
+
+// sharedspacememberOption allows management of the mutation configuration using functional options.
+type sharedspacememberOption func(*SharedSpaceMemberMutation)
+
+// newSharedSpaceMemberMutation creates new mutation for the SharedSpaceMember entity.
+func newSharedSpaceMemberMutation(c config, op Op, opts ...sharedspacememberOption) *SharedSpaceMemberMutation {
+	m := &SharedSpaceMemberMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSharedSpaceMember,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSharedSpaceMemberID sets the ID field of the mutation.
+func withSharedSpaceMemberID(id int) sharedspacememberOption {
+	return func(m *SharedSpaceMemberMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *SharedSpaceMember
+		)
+		m.oldValue = func(ctx context.Context) (*SharedSpaceMember, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().SharedSpaceMember.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSharedSpaceMember sets the old SharedSpaceMember of the mutation.
+func withSharedSpaceMember(node *SharedSpaceMember) sharedspacememberOption {
+	return func(m *SharedSpaceMemberMutation) {
+		m.oldValue = func(context.Context) (*SharedSpaceMember, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SharedSpaceMemberMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SharedSpaceMemberMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SharedSpaceMemberMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SharedSpaceMemberMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().SharedSpaceMember.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *SharedSpaceMemberMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *SharedSpaceMemberMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the SharedSpaceMember entity.
+// If the SharedSpaceMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMemberMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *SharedSpaceMemberMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *SharedSpaceMemberMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *SharedSpaceMemberMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the SharedSpaceMember entity.
+// If the SharedSpaceMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMemberMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *SharedSpaceMemberMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *SharedSpaceMemberMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *SharedSpaceMemberMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the SharedSpaceMember entity.
+// If the SharedSpaceMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMemberMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *SharedSpaceMemberMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[sharedspacemember.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *SharedSpaceMemberMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[sharedspacemember.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *SharedSpaceMemberMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, sharedspacemember.FieldDeletedAt)
+}
+
+// SetSharedSpaceID sets the "shared_space_id" field.
+func (m *SharedSpaceMemberMutation) SetSharedSpaceID(i int) {
+	m.shared_space = &i
+}
+
+// SharedSpaceID returns the value of the "shared_space_id" field in the mutation.
+func (m *SharedSpaceMemberMutation) SharedSpaceID() (r int, exists bool) {
+	v := m.shared_space
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSharedSpaceID returns the old "shared_space_id" field's value of the SharedSpaceMember entity.
+// If the SharedSpaceMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMemberMutation) OldSharedSpaceID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSharedSpaceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSharedSpaceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSharedSpaceID: %w", err)
+	}
+	return oldValue.SharedSpaceID, nil
+}
+
+// ResetSharedSpaceID resets all changes to the "shared_space_id" field.
+func (m *SharedSpaceMemberMutation) ResetSharedSpaceID() {
+	m.shared_space = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *SharedSpaceMemberMutation) SetUserID(i int) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *SharedSpaceMemberMutation) UserID() (r int, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the SharedSpaceMember entity.
+// If the SharedSpaceMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMemberMutation) OldUserID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (m *SharedSpaceMemberMutation) ClearUserID() {
+	m.user = nil
+	m.clearedFields[sharedspacemember.FieldUserID] = struct{}{}
+}
+
+// UserIDCleared returns if the "user_id" field was cleared in this mutation.
+func (m *SharedSpaceMemberMutation) UserIDCleared() bool {
+	_, ok := m.clearedFields[sharedspacemember.FieldUserID]
+	return ok
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *SharedSpaceMemberMutation) ResetUserID() {
+	m.user = nil
+	delete(m.clearedFields, sharedspacemember.FieldUserID)
+}
+
+// SetGroupID sets the "group_id" field.
+func (m *SharedSpaceMemberMutation) SetGroupID(i int) {
+	m.group = &i
+}
+
+// GroupID returns the value of the "group_id" field in the mutation.
+func (m *SharedSpaceMemberMutation) GroupID() (r int, exists bool) {
+	v := m.group
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGroupID returns the old "group_id" field's value of the SharedSpaceMember entity.
+// If the SharedSpaceMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMemberMutation) OldGroupID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGroupID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGroupID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGroupID: %w", err)
+	}
+	return oldValue.GroupID, nil
+}
+
+// ClearGroupID clears the value of the "group_id" field.
+func (m *SharedSpaceMemberMutation) ClearGroupID() {
+	m.group = nil
+	m.clearedFields[sharedspacemember.FieldGroupID] = struct{}{}
+}
+
+// GroupIDCleared returns if the "group_id" field was cleared in this mutation.
+func (m *SharedSpaceMemberMutation) GroupIDCleared() bool {
+	_, ok := m.clearedFields[sharedspacemember.FieldGroupID]
+	return ok
+}
+
+// ResetGroupID resets all changes to the "group_id" field.
+func (m *SharedSpaceMemberMutation) ResetGroupID() {
+	m.group = nil
+	delete(m.clearedFields, sharedspacemember.FieldGroupID)
+}
+
+// SetRole sets the "role" field.
+func (m *SharedSpaceMemberMutation) SetRole(s sharedspacemember.Role) {
+	m.role = &s
+}
+
+// Role returns the value of the "role" field in the mutation.
+func (m *SharedSpaceMemberMutation) Role() (r sharedspacemember.Role, exists bool) {
+	v := m.role
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRole returns the old "role" field's value of the SharedSpaceMember entity.
+// If the SharedSpaceMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SharedSpaceMemberMutation) OldRole(ctx context.Context) (v sharedspacemember.Role, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRole is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRole requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRole: %w", err)
+	}
+	return oldValue.Role, nil
+}
+
+// ResetRole resets all changes to the "role" field.
+func (m *SharedSpaceMemberMutation) ResetRole() {
+	m.role = nil
+}
+
+// ClearSharedSpace clears the "shared_space" edge to the SharedSpace entity.
+func (m *SharedSpaceMemberMutation) ClearSharedSpace() {
+	m.clearedshared_space = true
+	m.clearedFields[sharedspacemember.FieldSharedSpaceID] = struct{}{}
+}
+
+// SharedSpaceCleared reports if the "shared_space" edge to the SharedSpace entity was cleared.
+func (m *SharedSpaceMemberMutation) SharedSpaceCleared() bool {
+	return m.clearedshared_space
+}
+
+// SharedSpaceIDs returns the "shared_space" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SharedSpaceID instead. It exists only for internal usage by the builders.
+func (m *SharedSpaceMemberMutation) SharedSpaceIDs() (ids []int) {
+	if id := m.shared_space; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSharedSpace resets all changes to the "shared_space" edge.
+func (m *SharedSpaceMemberMutation) ResetSharedSpace() {
+	m.shared_space = nil
+	m.clearedshared_space = false
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *SharedSpaceMemberMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[sharedspacemember.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *SharedSpaceMemberMutation) UserCleared() bool {
+	return m.UserIDCleared() || m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *SharedSpaceMemberMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *SharedSpaceMemberMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// ClearGroup clears the "group" edge to the Group entity.
+func (m *SharedSpaceMemberMutation) ClearGroup() {
+	m.clearedgroup = true
+	m.clearedFields[sharedspacemember.FieldGroupID] = struct{}{}
+}
+
+// GroupCleared reports if the "group" edge to the Group entity was cleared.
+func (m *SharedSpaceMemberMutation) GroupCleared() bool {
+	return m.GroupIDCleared() || m.clearedgroup
+}
+
+// GroupIDs returns the "group" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// GroupID instead. It exists only for internal usage by the builders.
+func (m *SharedSpaceMemberMutation) GroupIDs() (ids []int) {
+	if id := m.group; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetGroup resets all changes to the "group" edge.
+func (m *SharedSpaceMemberMutation) ResetGroup() {
+	m.group = nil
+	m.clearedgroup = false
+}
+
+// Where appends a list predicates to the SharedSpaceMemberMutation builder.
+func (m *SharedSpaceMemberMutation) Where(ps ...predicate.SharedSpaceMember) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SharedSpaceMemberMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SharedSpaceMemberMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.SharedSpaceMember, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SharedSpaceMemberMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SharedSpaceMemberMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (SharedSpaceMember).
+func (m *SharedSpaceMemberMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SharedSpaceMemberMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.created_at != nil {
+		fields = append(fields, sharedspacemember.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, sharedspacemember.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, sharedspacemember.FieldDeletedAt)
+	}
+	if m.shared_space != nil {
+		fields = append(fields, sharedspacemember.FieldSharedSpaceID)
+	}
+	if m.user != nil {
+		fields = append(fields, sharedspacemember.FieldUserID)
+	}
+	if m.group != nil {
+		fields = append(fields, sharedspacemember.FieldGroupID)
+	}
+	if m.role != nil {
+		fields = append(fields, sharedspacemember.FieldRole)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SharedSpaceMemberMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case sharedspacemember.FieldCreatedAt:
+		return m.CreatedAt()
+	case sharedspacemember.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case sharedspacemember.FieldDeletedAt:
+		return m.DeletedAt()
+	case sharedspacemember.FieldSharedSpaceID:
+		return m.SharedSpaceID()
+	case sharedspacemember.FieldUserID:
+		return m.UserID()
+	case sharedspacemember.FieldGroupID:
+		return m.GroupID()
+	case sharedspacemember.FieldRole:
+		return m.Role()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SharedSpaceMemberMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case sharedspacemember.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case sharedspacemember.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case sharedspacemember.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case sharedspacemember.FieldSharedSpaceID:
+		return m.OldSharedSpaceID(ctx)
+	case sharedspacemember.FieldUserID:
+		return m.OldUserID(ctx)
+	case sharedspacemember.FieldGroupID:
+		return m.OldGroupID(ctx)
+	case sharedspacemember.FieldRole:
+		return m.OldRole(ctx)
+	}
+	return nil, fmt.Errorf("unknown SharedSpaceMember field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SharedSpaceMemberMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case sharedspacemember.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case sharedspacemember.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case sharedspacemember.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case sharedspacemember.FieldSharedSpaceID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSharedSpaceID(v)
+		return nil
+	case sharedspacemember.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case sharedspacemember.FieldGroupID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupID(v)
+		return nil
+	case sharedspacemember.FieldRole:
+		v, ok := value.(sharedspacemember.Role)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRole(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpaceMember field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SharedSpaceMemberMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SharedSpaceMemberMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SharedSpaceMemberMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown SharedSpaceMember numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SharedSpaceMemberMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(sharedspacemember.FieldDeletedAt) {
+		fields = append(fields, sharedspacemember.FieldDeletedAt)
+	}
+	if m.FieldCleared(sharedspacemember.FieldUserID) {
+		fields = append(fields, sharedspacemember.FieldUserID)
+	}
+	if m.FieldCleared(sharedspacemember.FieldGroupID) {
+		fields = append(fields, sharedspacemember.FieldGroupID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SharedSpaceMemberMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SharedSpaceMemberMutation) ClearField(name string) error {
+	switch name {
+	case sharedspacemember.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	case sharedspacemember.FieldUserID:
+		m.ClearUserID()
+		return nil
+	case sharedspacemember.FieldGroupID:
+		m.ClearGroupID()
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpaceMember nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SharedSpaceMemberMutation) ResetField(name string) error {
+	switch name {
+	case sharedspacemember.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case sharedspacemember.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case sharedspacemember.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case sharedspacemember.FieldSharedSpaceID:
+		m.ResetSharedSpaceID()
+		return nil
+	case sharedspacemember.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case sharedspacemember.FieldGroupID:
+		m.ResetGroupID()
+		return nil
+	case sharedspacemember.FieldRole:
+		m.ResetRole()
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpaceMember field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SharedSpaceMemberMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.shared_space != nil {
+		edges = append(edges, sharedspacemember.EdgeSharedSpace)
+	}
+	if m.user != nil {
+		edges = append(edges, sharedspacemember.EdgeUser)
+	}
+	if m.group != nil {
+		edges = append(edges, sharedspacemember.EdgeGroup)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SharedSpaceMemberMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case sharedspacemember.EdgeSharedSpace:
+		if id := m.shared_space; id != nil {
+			return []ent.Value{*id}
+		}
+	case sharedspacemember.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case sharedspacemember.EdgeGroup:
+		if id := m.group; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SharedSpaceMemberMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SharedSpaceMemberMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SharedSpaceMemberMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedshared_space {
+		edges = append(edges, sharedspacemember.EdgeSharedSpace)
+	}
+	if m.cleareduser {
+		edges = append(edges, sharedspacemember.EdgeUser)
+	}
+	if m.clearedgroup {
+		edges = append(edges, sharedspacemember.EdgeGroup)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SharedSpaceMemberMutation) EdgeCleared(name string) bool {
+	switch name {
+	case sharedspacemember.EdgeSharedSpace:
+		return m.clearedshared_space
+	case sharedspacemember.EdgeUser:
+		return m.cleareduser
+	case sharedspacemember.EdgeGroup:
+		return m.clearedgroup
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SharedSpaceMemberMutation) ClearEdge(name string) error {
+	switch name {
+	case sharedspacemember.EdgeSharedSpace:
+		m.ClearSharedSpace()
+		return nil
+	case sharedspacemember.EdgeUser:
+		m.ClearUser()
+		return nil
+	case sharedspacemember.EdgeGroup:
+		m.ClearGroup()
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpaceMember unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SharedSpaceMemberMutation) ResetEdge(name string) error {
+	switch name {
+	case sharedspacemember.EdgeSharedSpace:
+		m.ResetSharedSpace()
+		return nil
+	case sharedspacemember.EdgeUser:
+		m.ResetUser()
+		return nil
+	case sharedspacemember.EdgeGroup:
+		m.ResetGroup()
+		return nil
+	}
+	return fmt.Errorf("unknown SharedSpaceMember edge %s", name)
+}
+
 // StoragePolicyMutation represents an operation that mutates the StoragePolicy nodes in the graph.
 type StoragePolicyMutation struct {
 	config
@@ -15054,51 +16898,57 @@ func (m *TaskMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	created_at          *time.Time
-	updated_at          *time.Time
-	deleted_at          *time.Time
-	email               *string
-	nick                *string
-	password            *string
-	status              *user.Status
-	storage             *int64
-	addstorage          *int64
-	two_factor_secret   *string
-	avatar              *string
-	settings            **types.UserSetting
-	clearedFields       map[string]struct{}
-	group               *int
-	clearedgroup        bool
-	files               map[int]struct{}
-	removedfiles        map[int]struct{}
-	clearedfiles        bool
-	dav_accounts        map[int]struct{}
-	removeddav_accounts map[int]struct{}
-	cleareddav_accounts bool
-	shares              map[int]struct{}
-	removedshares       map[int]struct{}
-	clearedshares       bool
-	passkey             map[int]struct{}
-	removedpasskey      map[int]struct{}
-	clearedpasskey      bool
-	tasks               map[int]struct{}
-	removedtasks        map[int]struct{}
-	clearedtasks        bool
-	fsevents            map[int]struct{}
-	removedfsevents     map[int]struct{}
-	clearedfsevents     bool
-	entities            map[int]struct{}
-	removedentities     map[int]struct{}
-	clearedentities     bool
-	oauth_grants        map[int]struct{}
-	removedoauth_grants map[int]struct{}
-	clearedoauth_grants bool
-	done                bool
-	oldValue            func(context.Context) (*User, error)
-	predicates          []predicate.User
+	op                       Op
+	typ                      string
+	id                       *int
+	created_at               *time.Time
+	updated_at               *time.Time
+	deleted_at               *time.Time
+	email                    *string
+	nick                     *string
+	password                 *string
+	status                   *user.Status
+	storage                  *int64
+	addstorage               *int64
+	two_factor_secret        *string
+	avatar                   *string
+	settings                 **types.UserSetting
+	clearedFields            map[string]struct{}
+	group                    *int
+	clearedgroup             bool
+	files                    map[int]struct{}
+	removedfiles             map[int]struct{}
+	clearedfiles             bool
+	dav_accounts             map[int]struct{}
+	removeddav_accounts      map[int]struct{}
+	cleareddav_accounts      bool
+	shares                   map[int]struct{}
+	removedshares            map[int]struct{}
+	clearedshares            bool
+	passkey                  map[int]struct{}
+	removedpasskey           map[int]struct{}
+	clearedpasskey           bool
+	tasks                    map[int]struct{}
+	removedtasks             map[int]struct{}
+	clearedtasks             bool
+	fsevents                 map[int]struct{}
+	removedfsevents          map[int]struct{}
+	clearedfsevents          bool
+	entities                 map[int]struct{}
+	removedentities          map[int]struct{}
+	clearedentities          bool
+	oauth_grants             map[int]struct{}
+	removedoauth_grants      map[int]struct{}
+	clearedoauth_grants      bool
+	owned_spaces             map[int]struct{}
+	removedowned_spaces      map[int]struct{}
+	clearedowned_spaces      bool
+	space_memberships        map[int]struct{}
+	removedspace_memberships map[int]struct{}
+	clearedspace_memberships bool
+	done                     bool
+	oldValue                 func(context.Context) (*User, error)
+	predicates               []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -16188,6 +18038,114 @@ func (m *UserMutation) ResetOauthGrants() {
 	m.removedoauth_grants = nil
 }
 
+// AddOwnedSpaceIDs adds the "owned_spaces" edge to the SharedSpace entity by ids.
+func (m *UserMutation) AddOwnedSpaceIDs(ids ...int) {
+	if m.owned_spaces == nil {
+		m.owned_spaces = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.owned_spaces[ids[i]] = struct{}{}
+	}
+}
+
+// ClearOwnedSpaces clears the "owned_spaces" edge to the SharedSpace entity.
+func (m *UserMutation) ClearOwnedSpaces() {
+	m.clearedowned_spaces = true
+}
+
+// OwnedSpacesCleared reports if the "owned_spaces" edge to the SharedSpace entity was cleared.
+func (m *UserMutation) OwnedSpacesCleared() bool {
+	return m.clearedowned_spaces
+}
+
+// RemoveOwnedSpaceIDs removes the "owned_spaces" edge to the SharedSpace entity by IDs.
+func (m *UserMutation) RemoveOwnedSpaceIDs(ids ...int) {
+	if m.removedowned_spaces == nil {
+		m.removedowned_spaces = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.owned_spaces, ids[i])
+		m.removedowned_spaces[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedOwnedSpaces returns the removed IDs of the "owned_spaces" edge to the SharedSpace entity.
+func (m *UserMutation) RemovedOwnedSpacesIDs() (ids []int) {
+	for id := range m.removedowned_spaces {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// OwnedSpacesIDs returns the "owned_spaces" edge IDs in the mutation.
+func (m *UserMutation) OwnedSpacesIDs() (ids []int) {
+	for id := range m.owned_spaces {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetOwnedSpaces resets all changes to the "owned_spaces" edge.
+func (m *UserMutation) ResetOwnedSpaces() {
+	m.owned_spaces = nil
+	m.clearedowned_spaces = false
+	m.removedowned_spaces = nil
+}
+
+// AddSpaceMembershipIDs adds the "space_memberships" edge to the SharedSpaceMember entity by ids.
+func (m *UserMutation) AddSpaceMembershipIDs(ids ...int) {
+	if m.space_memberships == nil {
+		m.space_memberships = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.space_memberships[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSpaceMemberships clears the "space_memberships" edge to the SharedSpaceMember entity.
+func (m *UserMutation) ClearSpaceMemberships() {
+	m.clearedspace_memberships = true
+}
+
+// SpaceMembershipsCleared reports if the "space_memberships" edge to the SharedSpaceMember entity was cleared.
+func (m *UserMutation) SpaceMembershipsCleared() bool {
+	return m.clearedspace_memberships
+}
+
+// RemoveSpaceMembershipIDs removes the "space_memberships" edge to the SharedSpaceMember entity by IDs.
+func (m *UserMutation) RemoveSpaceMembershipIDs(ids ...int) {
+	if m.removedspace_memberships == nil {
+		m.removedspace_memberships = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.space_memberships, ids[i])
+		m.removedspace_memberships[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSpaceMemberships returns the removed IDs of the "space_memberships" edge to the SharedSpaceMember entity.
+func (m *UserMutation) RemovedSpaceMembershipsIDs() (ids []int) {
+	for id := range m.removedspace_memberships {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SpaceMembershipsIDs returns the "space_memberships" edge IDs in the mutation.
+func (m *UserMutation) SpaceMembershipsIDs() (ids []int) {
+	for id := range m.space_memberships {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSpaceMemberships resets all changes to the "space_memberships" edge.
+func (m *UserMutation) ResetSpaceMemberships() {
+	m.space_memberships = nil
+	m.clearedspace_memberships = false
+	m.removedspace_memberships = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -16556,7 +18514,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 11)
 	if m.group != nil {
 		edges = append(edges, user.EdgeGroup)
 	}
@@ -16583,6 +18541,12 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.oauth_grants != nil {
 		edges = append(edges, user.EdgeOauthGrants)
+	}
+	if m.owned_spaces != nil {
+		edges = append(edges, user.EdgeOwnedSpaces)
+	}
+	if m.space_memberships != nil {
+		edges = append(edges, user.EdgeSpaceMemberships)
 	}
 	return edges
 }
@@ -16643,13 +18607,25 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeOwnedSpaces:
+		ids := make([]ent.Value, 0, len(m.owned_spaces))
+		for id := range m.owned_spaces {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeSpaceMemberships:
+		ids := make([]ent.Value, 0, len(m.space_memberships))
+		for id := range m.space_memberships {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 11)
 	if m.removedfiles != nil {
 		edges = append(edges, user.EdgeFiles)
 	}
@@ -16673,6 +18649,12 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedoauth_grants != nil {
 		edges = append(edges, user.EdgeOauthGrants)
+	}
+	if m.removedowned_spaces != nil {
+		edges = append(edges, user.EdgeOwnedSpaces)
+	}
+	if m.removedspace_memberships != nil {
+		edges = append(edges, user.EdgeSpaceMemberships)
 	}
 	return edges
 }
@@ -16729,13 +18711,25 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeOwnedSpaces:
+		ids := make([]ent.Value, 0, len(m.removedowned_spaces))
+		for id := range m.removedowned_spaces {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeSpaceMemberships:
+		ids := make([]ent.Value, 0, len(m.removedspace_memberships))
+		for id := range m.removedspace_memberships {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 11)
 	if m.clearedgroup {
 		edges = append(edges, user.EdgeGroup)
 	}
@@ -16763,6 +18757,12 @@ func (m *UserMutation) ClearedEdges() []string {
 	if m.clearedoauth_grants {
 		edges = append(edges, user.EdgeOauthGrants)
 	}
+	if m.clearedowned_spaces {
+		edges = append(edges, user.EdgeOwnedSpaces)
+	}
+	if m.clearedspace_memberships {
+		edges = append(edges, user.EdgeSpaceMemberships)
+	}
 	return edges
 }
 
@@ -16788,6 +18788,10 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedentities
 	case user.EdgeOauthGrants:
 		return m.clearedoauth_grants
+	case user.EdgeOwnedSpaces:
+		return m.clearedowned_spaces
+	case user.EdgeSpaceMemberships:
+		return m.clearedspace_memberships
 	}
 	return false
 }
@@ -16833,6 +18837,12 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeOauthGrants:
 		m.ResetOauthGrants()
+		return nil
+	case user.EdgeOwnedSpaces:
+		m.ResetOwnedSpaces()
+		return nil
+	case user.EdgeSpaceMemberships:
+		m.ResetSpaceMemberships()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

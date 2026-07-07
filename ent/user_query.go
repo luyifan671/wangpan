@@ -20,6 +20,8 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/passkey"
 	"github.com/cloudreve/Cloudreve/v4/ent/predicate"
 	"github.com/cloudreve/Cloudreve/v4/ent/share"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspace"
+	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
 	"github.com/cloudreve/Cloudreve/v4/ent/task"
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
 )
@@ -27,19 +29,21 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx             *QueryContext
-	order           []user.OrderOption
-	inters          []Interceptor
-	predicates      []predicate.User
-	withGroup       *GroupQuery
-	withFiles       *FileQuery
-	withDavAccounts *DavAccountQuery
-	withShares      *ShareQuery
-	withPasskey     *PasskeyQuery
-	withTasks       *TaskQuery
-	withFsevents    *FsEventQuery
-	withEntities    *EntityQuery
-	withOauthGrants *OAuthGrantQuery
+	ctx                  *QueryContext
+	order                []user.OrderOption
+	inters               []Interceptor
+	predicates           []predicate.User
+	withGroup            *GroupQuery
+	withFiles            *FileQuery
+	withDavAccounts      *DavAccountQuery
+	withShares           *ShareQuery
+	withPasskey          *PasskeyQuery
+	withTasks            *TaskQuery
+	withFsevents         *FsEventQuery
+	withEntities         *EntityQuery
+	withOauthGrants      *OAuthGrantQuery
+	withOwnedSpaces      *SharedSpaceQuery
+	withSpaceMemberships *SharedSpaceMemberQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -274,6 +278,50 @@ func (uq *UserQuery) QueryOauthGrants() *OAuthGrantQuery {
 	return query
 }
 
+// QueryOwnedSpaces chains the current query on the "owned_spaces" edge.
+func (uq *UserQuery) QueryOwnedSpaces() *SharedSpaceQuery {
+	query := (&SharedSpaceClient{config: uq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(sharedspace.Table, sharedspace.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.OwnedSpacesTable, user.OwnedSpacesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QuerySpaceMemberships chains the current query on the "space_memberships" edge.
+func (uq *UserQuery) QuerySpaceMemberships() *SharedSpaceMemberQuery {
+	query := (&SharedSpaceMemberClient{config: uq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(sharedspacemember.Table, sharedspacemember.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.SpaceMembershipsTable, user.SpaceMembershipsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first User entity from the query.
 // Returns a *NotFoundError when no User was found.
 func (uq *UserQuery) First(ctx context.Context) (*User, error) {
@@ -461,20 +509,22 @@ func (uq *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:          uq.config,
-		ctx:             uq.ctx.Clone(),
-		order:           append([]user.OrderOption{}, uq.order...),
-		inters:          append([]Interceptor{}, uq.inters...),
-		predicates:      append([]predicate.User{}, uq.predicates...),
-		withGroup:       uq.withGroup.Clone(),
-		withFiles:       uq.withFiles.Clone(),
-		withDavAccounts: uq.withDavAccounts.Clone(),
-		withShares:      uq.withShares.Clone(),
-		withPasskey:     uq.withPasskey.Clone(),
-		withTasks:       uq.withTasks.Clone(),
-		withFsevents:    uq.withFsevents.Clone(),
-		withEntities:    uq.withEntities.Clone(),
-		withOauthGrants: uq.withOauthGrants.Clone(),
+		config:               uq.config,
+		ctx:                  uq.ctx.Clone(),
+		order:                append([]user.OrderOption{}, uq.order...),
+		inters:               append([]Interceptor{}, uq.inters...),
+		predicates:           append([]predicate.User{}, uq.predicates...),
+		withGroup:            uq.withGroup.Clone(),
+		withFiles:            uq.withFiles.Clone(),
+		withDavAccounts:      uq.withDavAccounts.Clone(),
+		withShares:           uq.withShares.Clone(),
+		withPasskey:          uq.withPasskey.Clone(),
+		withTasks:            uq.withTasks.Clone(),
+		withFsevents:         uq.withFsevents.Clone(),
+		withEntities:         uq.withEntities.Clone(),
+		withOauthGrants:      uq.withOauthGrants.Clone(),
+		withOwnedSpaces:      uq.withOwnedSpaces.Clone(),
+		withSpaceMemberships: uq.withSpaceMemberships.Clone(),
 		// clone intermediate query.
 		sql:  uq.sql.Clone(),
 		path: uq.path,
@@ -580,6 +630,28 @@ func (uq *UserQuery) WithOauthGrants(opts ...func(*OAuthGrantQuery)) *UserQuery 
 	return uq
 }
 
+// WithOwnedSpaces tells the query-builder to eager-load the nodes that are connected to
+// the "owned_spaces" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithOwnedSpaces(opts ...func(*SharedSpaceQuery)) *UserQuery {
+	query := (&SharedSpaceClient{config: uq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withOwnedSpaces = query
+	return uq
+}
+
+// WithSpaceMemberships tells the query-builder to eager-load the nodes that are connected to
+// the "space_memberships" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithSpaceMemberships(opts ...func(*SharedSpaceMemberQuery)) *UserQuery {
+	query := (&SharedSpaceMemberClient{config: uq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withSpaceMemberships = query
+	return uq
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -658,7 +730,7 @@ func (uq *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = uq.querySpec()
-		loadedTypes = [9]bool{
+		loadedTypes = [11]bool{
 			uq.withGroup != nil,
 			uq.withFiles != nil,
 			uq.withDavAccounts != nil,
@@ -668,6 +740,8 @@ func (uq *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			uq.withFsevents != nil,
 			uq.withEntities != nil,
 			uq.withOauthGrants != nil,
+			uq.withOwnedSpaces != nil,
+			uq.withSpaceMemberships != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -747,6 +821,20 @@ func (uq *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := uq.loadOauthGrants(ctx, query, nodes,
 			func(n *User) { n.Edges.OauthGrants = []*OAuthGrant{} },
 			func(n *User, e *OAuthGrant) { n.Edges.OauthGrants = append(n.Edges.OauthGrants, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := uq.withOwnedSpaces; query != nil {
+		if err := uq.loadOwnedSpaces(ctx, query, nodes,
+			func(n *User) { n.Edges.OwnedSpaces = []*SharedSpace{} },
+			func(n *User, e *SharedSpace) { n.Edges.OwnedSpaces = append(n.Edges.OwnedSpaces, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := uq.withSpaceMemberships; query != nil {
+		if err := uq.loadSpaceMemberships(ctx, query, nodes,
+			func(n *User) { n.Edges.SpaceMemberships = []*SharedSpaceMember{} },
+			func(n *User, e *SharedSpaceMember) { n.Edges.SpaceMemberships = append(n.Edges.SpaceMemberships, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1008,6 +1096,66 @@ func (uq *UserQuery) loadOauthGrants(ctx context.Context, query *OAuthGrantQuery
 	}
 	query.Where(predicate.OAuthGrant(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.OauthGrantsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (uq *UserQuery) loadOwnedSpaces(ctx context.Context, query *SharedSpaceQuery, nodes []*User, init func(*User), assign func(*User, *SharedSpace)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(sharedspace.FieldOwnerID)
+	}
+	query.Where(predicate.SharedSpace(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.OwnedSpacesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.OwnerID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "owner_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (uq *UserQuery) loadSpaceMemberships(ctx context.Context, query *SharedSpaceMemberQuery, nodes []*User, init func(*User), assign func(*User, *SharedSpaceMember)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(sharedspacemember.FieldUserID)
+	}
+	query.Where(predicate.SharedSpaceMember(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.SpaceMembershipsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
