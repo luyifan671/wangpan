@@ -63,6 +63,7 @@ export interface CustomContentProps extends TreeItemContentProps {
   loading?: boolean;
   pinned?: boolean;
   canDrop?: boolean;
+  onContextMenuOverride?: (e: React.MouseEvent<HTMLElement>) => void;
 }
 
 export interface TreeFileProps extends TreeItemProps {
@@ -74,6 +75,7 @@ export interface TreeFileProps extends TreeItemProps {
   loading?: boolean;
   pinned?: boolean;
   canDrop?: boolean;
+  onContextMenuOverride?: (e: React.MouseEvent<HTMLElement>) => void;
 }
 
 const SmallIconButton = styled(IconButton)(() => ({
@@ -197,12 +199,16 @@ const CustomContent = React.memo(
 
     const onContextMenu = useCallback(
       (e: React.MouseEvent<HTMLElement>) => {
+        if (props.onContextMenuOverride) {
+          props.onContextMenuOverride(e);
+          return;
+        }
         if (!file || file.name === "") {
           return;
         }
         dispatch(openFileContextMenu(fmIndex, file, true, e));
       },
-      [file, dispatch, fmIndex],
+      [file, dispatch, fmIndex, props.onContextMenuOverride],
     );
 
     const fileName = useMemo(
@@ -283,9 +289,9 @@ const CustomContent = React.memo(
 const TreeFile = React.memo(
   React.forwardRef(function CustomTreeItem(props: TreeFileProps, ref: React.Ref<HTMLLIElement>) {
     const contentProps = useMemo(() => {
-      const { level, file, notLoaded, fileIcon, loading, pinned, canDrop } = props;
-      return { level, file, notLoaded, fileIcon, loading, pinned, canDrop };
-    }, [props.level, props.file, props.notLoaded, props.fileIcon, props.loading, props.canDrop, props.pinned]);
+      const { level, file, notLoaded, fileIcon, loading, pinned, canDrop, onContextMenuOverride } = props;
+      return { level, file, notLoaded, fileIcon, loading, pinned, canDrop, onContextMenuOverride };
+    }, [props.level, props.file, props.notLoaded, props.fileIcon, props.loading, props.canDrop, props.pinned, props.onContextMenuOverride]);
     return (
       <StyledTreeItemRoot
         ContentComponent={CustomContent}

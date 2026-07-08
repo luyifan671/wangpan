@@ -87,7 +87,7 @@ const TreeNavigation = React.memo(
                   )}
                   {isLogin && (
                     <>
-                      {index == FileManagerIndex.main && <SharedSpaces />}
+                      {(index == FileManagerIndex.main || index == FileManagerIndex.selector) && <SharedSpaces />}
                       <TreeFiles
                         canDrop
                         level={0}

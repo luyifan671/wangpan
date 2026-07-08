@@ -3,14 +3,19 @@ import { Collapse } from "@mui/material";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TransitionGroup } from "react-transition-group";
-import { getSharedSpaces } from "../../../api/api.ts";
+import { getSharedSpaces, sendDeleteSharedSpace } from "../../../api/api.ts";
 import { SharedSpace } from "../../../api/space.ts";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks.ts";
+import { confirmOperation } from "../../../redux/thunks/dialog.ts";
 import { navigateToPath } from "../../../redux/thunks/filemanager.ts";
 import CrUri, { Filesystem } from "../../../util/uri.ts";
 import SideNavItem from "../../Frame/NavBar/SideNavItem.tsx";
 import SharedSpaceDialog from "../Dialogs/SharedSpaceDialog.tsx";
 import { FmIndexContext } from "../FmIndexContext.tsx";
+import { SquareMenu, SquareMenuItem } from "../ContextMenu/ContextMenu.tsx";
+import { ListItemIcon, ListItemText } from "@mui/material";
+import SettingsOutlined from "../../Icons/SettingsOutlined.tsx";
+import DeleteOutlined from "../../Icons/DeleteOutlined.tsx";
 import TreeFiles from "./TreeFiles.tsx";
 
 const sharedSpacesChangedEvent = "cloudreve:shared-spaces-changed";
@@ -54,6 +59,15 @@ const SharedSpaces = () => {
   const currentFs = useAppSelector((s) => s.fileManager[fmIndex].current_fs);
   const path = useAppSelector((s) => s.fileManager[fmIndex].path);
   const elements = useAppSelector((s) => s.fileManager[fmIndex].path_elements);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [manageSpace, setManageSpace] = useState<SharedSpace | undefined>();
+  const [contextMenu, setContextMenu] = useState<{
+    open: boolean;
+    x: number;
+    y: number;
+    space?: SharedSpace;
+  }>({ open: false, x: 0, y: 0 });
+  const { t } = useTranslation();
 
   const loadSpaces = useCallback(async () => {
     const res = await dispatch(getSharedSpaces({ page_size: 200 }));
@@ -76,24 +90,103 @@ const SharedSpaces = () => {
     return new CrUri(path).id();
   }, [currentFs, path]);
 
+  const onContextMenu = useCallback(
+    (space: SharedSpace) => (e: React.MouseEvent<HTMLElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({ open: true, x: e.clientX, y: e.clientY, space });
+    },
+    [],
+  );
+
+  const onContextMenuClose = useCallback(() => {
+    setContextMenu((prev) => ({ ...prev, open: false }));
+  }, []);
+
+  const onManageClick = useCallback(() => {
+    setManageSpace(contextMenu.space);
+    setManageOpen(true);
+    onContextMenuClose();
+  }, [contextMenu.space, onContextMenuClose]);
+
+  const onDeleteClick = useCallback(async () => {
+    const space = contextMenu.space;
+    onContextMenuClose();
+    if (!space) return;
+    try {
+      await dispatch(
+        confirmOperation(
+          t("application:sharedSpace.confirmDelete", { defaultValue: "确认删除共享空间 {{name}}？此操作不可撤销。", name: space.name }),
+        ),
+      );
+    } catch {
+      return;
+    }
+    await dispatch(sendDeleteSharedSpace(space.id));
+    loadSpaces();
+  }, [contextMenu.space, dispatch, loadSpaces, onContextMenuClose, t]);
+
+  const onManageChanged = useCallback(
+    (space?: SharedSpace) => {
+      setManageOpen(false);
+      if (space) {
+        loadSpaces();
+      }
+    },
+    [loadSpaces],
+  );
+
   return (
-    <TransitionGroup>
-      {spaces.map((space) => {
-        const spaceElements =
-          activeSpaceID && activeSpaceID === new CrUri(space.root_uri).id() ? elements : undefined;
-        return (
-          <Collapse key={space.id}>
-            <TreeFiles
-              canDrop={space.role === "admin" || space.role === "editor"}
-              level={1}
-              path={space.root_uri}
-              labelOverwrite={space.name}
-              elements={spaceElements}
-            />
-          </Collapse>
-        );
-      })}
-    </TransitionGroup>
+    <>
+      <SharedSpaceDialog
+        open={manageOpen}
+        space={manageSpace}
+        onClose={() => setManageOpen(false)}
+        onChanged={onManageChanged}
+      />
+      <SquareMenu
+        open={contextMenu.open}
+        onClose={onContextMenuClose}
+        anchorReference="anchorPosition"
+        anchorPosition={contextMenu.open ? { top: contextMenu.y, left: contextMenu.x } : undefined}
+        MenuListProps={{ dense: true }}
+      >
+        <SquareMenuItem onClick={onManageClick}>
+          <ListItemIcon>
+            <SettingsOutlined fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>
+            {t("application:sharedSpace.manage", { defaultValue: "管理共享空间" })}
+          </ListItemText>
+        </SquareMenuItem>
+        <SquareMenuItem onClick={onDeleteClick}>
+          <ListItemIcon>
+            <DeleteOutlined fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>
+            {t("common:delete", { defaultValue: "删除" })}
+          </ListItemText>
+        </SquareMenuItem>
+      </SquareMenu>
+      <TransitionGroup>
+        {spaces.map((space) => {
+          const spaceElements =
+            activeSpaceID && activeSpaceID === new CrUri(space.root_uri).id() ? elements : undefined;
+          return (
+            <Collapse key={space.id}>
+              <TreeFiles
+                canDrop={space.role === "admin" || space.role === "editor"}
+                level={1}
+                path={space.root_uri}
+                labelOverwrite={space.name}
+                elements={spaceElements}
+                onContextMenuOverride={onContextMenu(space)}
+              />
+            </Collapse>
+          );
+        })}
+      </TransitionGroup>
+    </>
   );
 };
 

@@ -664,19 +664,39 @@ export function moveFiles(index: number, src: FileResponse[], dst: string, isCop
       return;
     }
 
+    // Cross-filesystem move: use copy + delete since backend doesn't support
+    // true move across different filesystems (e.g. my -> shared_space)
+    const srcFs = new CrUri(src[0].path).fs();
+    const isCrossFsMove = !isCopy && srcFs !== dstUri.fs();
+    const effectiveCopy = isCopy || isCrossFsMove;
+
     let success = true;
     try {
       await longRunningTaskWithSnackbar(
-        dispatch(sendMoveFile({ uris: src.map((f) => f.path), dst, copy: isCopy })),
-        isCopy ? "application:modals.processingCopying" : "application:modals.processingMoving",
+        dispatch(sendMoveFile({ uris: src.map((f) => f.path), dst, copy: effectiveCopy })),
+        effectiveCopy ? "application:modals.processingCopying" : "application:modals.processingMoving",
       );
     } catch (e) {
       success = false;
     }
 
-    if (isCopy) {
+    if (success && isCrossFsMove) {
+      // Delete source files after successful cross-fs copy
+      try {
+        await dispatch(sendDeleteFiles({ uris: src.map((f) => f.path), skip_soft_delete: true }));
+      } catch (e) {
+        // Source files remain in original location if delete fails
+      }
+    }
+
+    if (effectiveCopy) {
       if (dst == getState().fileManager[index].path) dispatch(refreshFileList(index));
     } else if (success) {
+      dispatch(processFileListDiff(index, src));
+    }
+
+    // For cross-fs move, also remove source files from current view
+    if (success && isCrossFsMove) {
       dispatch(processFileListDiff(index, src));
     }
 

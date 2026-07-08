@@ -117,8 +117,10 @@ export const getActionOpt = (
     }
 
     const parentCap = new Boolset(parent.capability);
-    display.showCreateFolder = parentCap.enabled(NavigatorCapability.create_file) && parent.owned;
-    display.showCreateFile = display.showCreateFolder && fmIndex == FileManagerIndex.main;
+    const parentUrl = new CrUri(parent.path);
+    const isSharedSpace = parentUrl.fs() == Filesystem.shared_space;
+    display.showCreateFolder = parentCap.enabled(NavigatorCapability.create_file) && (parent.owned || isSharedSpace);
+    display.showCreateFile = display.showCreateFolder && (fmIndex == FileManagerIndex.main || isSharedSpace);
     display.showUpload = display.showCreateFile;
     if (display.showCreateFile) {
       const allViewers = Object.entries(ViewersByID);

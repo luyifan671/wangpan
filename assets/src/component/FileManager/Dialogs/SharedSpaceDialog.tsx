@@ -174,7 +174,7 @@ const SharedSpaceDialog = ({ open, space, onClose, onChanged }: SharedSpaceDialo
       dialogProps={{ open, onClose }}
       showActions
       showCancel
-      okText={isManage ? t("common:save") : t("common:create", { defaultValue: "Create" })}
+      okText={isManage ? t("common:save", { defaultValue: "保存" }) : t("common:create", { defaultValue: "Create" })}
       onAccept={onAccept}
     >
       <DialogContent sx={{ pt: 1, minWidth: { xs: "unset", sm: 460 } }}>

@@ -10,12 +10,13 @@ export function canCopyMoveTo(files: FileResponse[], dst: string, isCopy: boolea
   if (isCopy) {
     return (
       (srcUri.fs() == dstUri.fs() && (srcUri.fs() == Filesystem.my || sameSharedSpace)) ||
-      (srcUri.fs() == Filesystem.my && dstUri.fs() == Filesystem.shared_space)
+      (srcUri.fs() == Filesystem.my && dstUri.fs() == Filesystem.shared_space) ||
+      (srcUri.fs() == Filesystem.shared_space && dstUri.fs() == Filesystem.my)
     );
   } else {
     switch (srcUri.fs()) {
       case Filesystem.my:
-        return dstUri.fs() == Filesystem.my || dstUri.fs() == Filesystem.trash;
+        return dstUri.fs() == Filesystem.my || dstUri.fs() == Filesystem.trash || dstUri.fs() == Filesystem.shared_space;
       case Filesystem.trash:
         return dstUri.fs() == Filesystem.my;
       case Filesystem.shared_space:
