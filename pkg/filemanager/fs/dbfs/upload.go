@@ -22,6 +22,7 @@ func (f *DBFS) PreValidateUpload(ctx context.Context, dst *fs.URI, files ...fs.P
 	if err != nil {
 		return err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 	dstFile, err := f.getFileByPath(ctx, navigator, dst)
 	if err != nil {
@@ -33,7 +34,7 @@ func (f *DBFS) PreValidateUpload(ctx context.Context, dst *fs.URI, files ...fs.P
 	}
 
 	// check ownership
-	if f.user.ID != dstFile.OwnerID() {
+	if _, ok := ctx.Value(ByPassOwnerCheckCtxKey{}).(bool); !ok && f.user.ID != dstFile.OwnerID() {
 		return fmt.Errorf("failed to evaluate permission: %w", err)
 	}
 
@@ -75,6 +76,7 @@ func (f *DBFS) PrepareUpload(ctx context.Context, req *fs.UploadRequest, opts ..
 	if err != nil {
 		return nil, err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 	// Get most recent ancestor or target file
 	ctx = context.WithValue(ctx, inventory.LoadFileEntity{}, true)
@@ -260,6 +262,12 @@ func (f *DBFS) PrepareUpload(ctx context.Context, req *fs.UploadRequest, opts ..
 }
 
 func (f *DBFS) CompleteUpload(ctx context.Context, session *fs.UploadSession) (fs.File, error) {
+	navigator, err := f.getNavigator(ctx, session.Props.Uri, NavigatorCapabilityUploadFile)
+	if err != nil {
+		return nil, err
+	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
+
 	// Get placeholder file
 	file, err := f.Get(ctx, session.Props.Uri, WithFileEntities(), WithNotRoot())
 	if err != nil {
@@ -370,6 +378,12 @@ func (f *DBFS) CompleteUpload(ctx context.Context, session *fs.UploadSession) (f
 // - File unlocked, upload session valid
 // - File unlocked, upload session not valid
 func (f *DBFS) CancelUploadSession(ctx context.Context, path *fs.URI, sessionID string, session *fs.UploadSession) ([]fs.Entity, *fs.IndexDiff, error) {
+	navigator, err := f.getNavigator(ctx, path, NavigatorCapabilityUploadFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
+
 	// Get placeholder file
 	file, err := f.Get(ctx, path, WithFileEntities(), WithNotRoot())
 	if err != nil {

@@ -22,6 +22,7 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/service/oauth"
 	"github.com/cloudreve/Cloudreve/v4/service/setting"
 	sharesvc "github.com/cloudreve/Cloudreve/v4/service/share"
+	spacesvc "github.com/cloudreve/Cloudreve/v4/service/shared_space"
 	usersvc "github.com/cloudreve/Cloudreve/v4/service/user"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
@@ -1323,6 +1324,48 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 				//devices.POST("mount", controllers.CreateWebDAVMounts)
 				//// 更新账号可读性
 				//devices.PATCH("accounts", controllers.UpdateWebDAVAccountsReadonly)
+			}
+
+			space := auth.Group("space")
+			space.Use(middleware.RequiredScopes(types.ScopeUserInfoRead))
+			{
+				space.GET("",
+					controllers.FromQuery[spacesvc.ListSharedSpaceService](spacesvc.ListSharedSpaceParamCtx{}),
+					controllers.ListSharedSpaces,
+				)
+				space.PUT("",
+					middleware.RequiredScopes(types.ScopeUserInfoWrite),
+					controllers.FromJSON[spacesvc.CreateSharedSpaceService](spacesvc.CreateSharedSpaceParamCtx{}),
+					controllers.CreateSharedSpace,
+				)
+				space.POST(":id",
+					middleware.RequiredScopes(types.ScopeUserInfoWrite),
+					controllers.FromJSON[spacesvc.CreateSharedSpaceService](spacesvc.CreateSharedSpaceParamCtx{}),
+					controllers.UpdateSharedSpace,
+				)
+				space.DELETE(":id",
+					middleware.RequiredScopes(types.ScopeUserInfoWrite),
+					controllers.FromUri[spacesvc.SpaceIDService](spacesvc.SpaceIDParamCtx{}),
+					controllers.DeleteSharedSpace,
+				)
+				space.GET(":id/members",
+					controllers.FromQuery[spacesvc.ListSharedSpaceService](spacesvc.ListSharedSpaceParamCtx{}),
+					controllers.ListSpaceMembers,
+				)
+				space.PUT(":id/members",
+					middleware.RequiredScopes(types.ScopeUserInfoWrite),
+					controllers.FromJSON[spacesvc.AddMemberService](spacesvc.AddMemberParamCtx{}),
+					controllers.AddSpaceMember,
+				)
+				space.PATCH(":id/members/:memberId",
+					middleware.RequiredScopes(types.ScopeUserInfoWrite),
+					controllers.FromJSON[spacesvc.UpdateMemberService](spacesvc.UpdateMemberParamCtx{}),
+					controllers.UpdateSpaceMember,
+				)
+				space.DELETE(":id/members/:memberId",
+					middleware.RequiredScopes(types.ScopeUserInfoWrite),
+					controllers.RemoveSpaceMember,
+				)
 			}
 
 		}

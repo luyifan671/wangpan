@@ -17,13 +17,14 @@ func (f *DBFS) PatchProps(ctx context.Context, uri *fs.URI, props *types.FilePro
 	if err != nil {
 		return err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 	target, err := f.getFileByPath(ctx, navigator, uri)
 	if err != nil {
 		return fmt.Errorf("failed to get target file: %w", err)
 	}
 
-	if target.OwnerID() != f.user.ID && !f.user.Edges.Group.Permissions.Enabled(int(types.GroupPermissionIsAdmin)) {
+	if ctx.Value(ByPassOwnerCheckCtxKey{}) == nil && target.OwnerID() != f.user.ID && !f.user.Edges.Group.Permissions.Enabled(int(types.GroupPermissionIsAdmin)) {
 		return fs.ErrOwnerOnly.WithError(fmt.Errorf("only file owner can modify file props"))
 	}
 
@@ -64,6 +65,7 @@ func (f *DBFS) PatchMetadata(ctx context.Context, path []*fs.URI, metas ...fs.Me
 			ae.Add(p.String(), err)
 			continue
 		}
+		ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 		target, err := f.getFileByPath(ctx, navigator, p)
 		if err != nil {

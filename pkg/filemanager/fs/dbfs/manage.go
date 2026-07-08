@@ -30,6 +30,7 @@ func (f *DBFS) Create(ctx context.Context, path *fs.URI, fileType types.FileType
 	if err != nil {
 		return nil, err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 	// Get most recent ancestor
 	var ancestor *File
@@ -153,6 +154,7 @@ func (f *DBFS) Rename(ctx context.Context, path *fs.URI, newName string) (fs.Fil
 	if err != nil {
 		return nil, nil, err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 	// Get target file
 	ctx = context.WithValue(ctx, inventory.LoadFileMetadata{}, true)
@@ -257,6 +259,7 @@ func (f *DBFS) SoftDelete(ctx context.Context, path ...*fs.URI) error {
 			ae.Add(p.String(), err)
 			continue
 		}
+		ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 		// Get target file
 		target, err := f.getFileByPath(ctx, navigator, p)
@@ -351,6 +354,7 @@ func (f *DBFS) Delete(ctx context.Context, path []*fs.URI, opts ...fs.Option) ([
 			ae.Add(p.String(), err)
 			continue
 		}
+		ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 		// Get target file
 		target, err := f.getFileByPath(ctx, navigator, p)
@@ -418,6 +422,7 @@ func (f *DBFS) VersionControl(ctx context.Context, path *fs.URI, versionId int, 
 	if err != nil {
 		return nil, err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 	// Get target file
 	ctx = context.WithValue(ctx, inventory.LoadFileEntity{}, true)
@@ -490,6 +495,7 @@ func (f *DBFS) Restore(ctx context.Context, path ...*fs.URI) error {
 			ae.Add(p.String(), err)
 			continue
 		}
+		ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 		// Get target file
 		target, err := f.getFileByPath(ctx, navigator, p)
@@ -539,6 +545,7 @@ func (f *DBFS) MoveOrCopy(ctx context.Context, path []*fs.URI, dst *fs.URI, isCo
 	if err != nil {
 		return nil, err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, dstNavigator)
 
 	// Get destination file
 	destination, err := f.getFileByPath(ctx, dstNavigator, dst)
@@ -568,6 +575,7 @@ func (f *DBFS) MoveOrCopy(ctx context.Context, path []*fs.URI, dst *fs.URI, isCo
 			ae.Add(p.String(), err)
 			continue
 		}
+		ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 		// Check fs capability
 		if !canMoveOrCopyTo(p, dst, isCopy) {

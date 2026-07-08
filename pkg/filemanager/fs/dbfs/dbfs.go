@@ -42,7 +42,7 @@ type (
 	ByPassOwnerCheckCtxKey struct{}
 )
 
-func NewDatabaseFS(u *ent.User, fileClient inventory.FileClient, shareClient inventory.ShareClient,
+func NewDatabaseFS(u *ent.User, fileClient inventory.FileClient, shareClient inventory.ShareClient, spaceClient inventory.SpaceClient,
 	l logging.Logger, ls lock.LockSystem, settingClient setting.Provider,
 	storagePolicyClient inventory.StoragePolicyClient, hasher hashid.Encoder, userClient inventory.UserClient,
 	cache, stateKv cache.Driver, directLinkClient inventory.DirectLinkClient, encryptorFactory encrypt.CryptorFactory, eventHub eventhub.EventHub) fs.FileSystem {
@@ -51,6 +51,7 @@ func NewDatabaseFS(u *ent.User, fileClient inventory.FileClient, shareClient inv
 		navigators:          make(map[string]Navigator),
 		fileClient:          fileClient,
 		shareClient:         shareClient,
+		spaceClient:         spaceClient,
 		l:                   l,
 		ls:                  ls,
 		settingClient:       settingClient,
@@ -72,6 +73,7 @@ type DBFS struct {
 	userClient          inventory.UserClient
 	storagePolicyClient inventory.StoragePolicyClient
 	shareClient         inventory.ShareClient
+	spaceClient         inventory.SpaceClient
 	directLinkClient    inventory.DirectLinkClient
 	l                   logging.Logger
 	ls                  lock.LockSystem
@@ -119,6 +121,7 @@ func (f *DBFS) List(ctx context.Context, path *fs.URI, opts ...fs.Option) (fs.Fi
 	if err != nil {
 		return nil, nil, err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 	searchParams := path.SearchParameters()
 	isSearching := searchParams != nil
@@ -379,6 +382,7 @@ func (f *DBFS) Get(ctx context.Context, path *fs.URI, opts ...fs.Option) (fs.Fil
 	if err != nil {
 		return nil, err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 	if o.loadFilePublicMetadata || o.extendedInfo {
 		ctx = context.WithValue(ctx, inventory.LoadFilePublicMetadata{}, true)
@@ -540,6 +544,7 @@ func (f *DBFS) Walk(ctx context.Context, path *fs.URI, depth int, walk fs.WalkFu
 	if err != nil {
 		return err
 	}
+	ctx = withBypassOwnerCheckForNavigator(ctx, navigator)
 
 	target, err := f.getFileByPath(ctx, navigator, path)
 	if err != nil {
@@ -737,6 +742,17 @@ func (f *DBFS) getNavigator(ctx context.Context, path *fs.URI, requiredCapabilit
 			n = NewTrashNavigator(f.user, f.fileClient, f.l, config, f.hasher)
 		case constants.FileSystemSharedWithMe:
 			n = NewSharedWithMeNavigator(f.user, f.fileClient, f.l, config, f.hasher)
+		case constants.FileSystemSharedSpace:
+			n = NewSharedSpaceNavigator(f.user, f.fileClient, f.spaceClient, f.l, config, f.hasher)
+			// Eagerly initialize role so Capabilities() returns correct permissions
+			spaceHashID := path.ID("")
+			if spaceHashID != "" {
+				if ssNav, ok := n.(*sharedSpaceNavigator); ok {
+					if err := ssNav.initRole(ctx, spaceHashID); err != nil {
+						return nil, err
+					}
+				}
+			}
 		default:
 			return nil, fmt.Errorf("unknown file system %q", pathFs)
 		}
@@ -771,6 +787,13 @@ func (f *DBFS) getNavigator(ctx context.Context, path *fs.URI, requiredCapabilit
 	return res, nil
 }
 
+func withBypassOwnerCheckForNavigator(ctx context.Context, navigator Navigator) context.Context {
+	if _, ok := navigator.(*sharedSpaceNavigator); ok {
+		return WithBypassOwnerCheck(ctx)
+	}
+	return ctx
+}
+
 func (f *DBFS) navigatorId(path *fs.URI) string {
 	uidHashed := hashid.EncodeUserID(f.hasher, f.user.ID)
 	switch path.FileSystem() {
@@ -780,6 +803,8 @@ func (f *DBFS) navigatorId(path *fs.URI) string {
 		return fmt.Sprintf("%s/%s/%d", constants.FileSystemShare, path.ID(uidHashed), f.user.ID)
 	case constants.FileSystemTrash:
 		return fmt.Sprintf("%s/%s", constants.FileSystemTrash, path.ID(uidHashed))
+		case constants.FileSystemSharedSpace:
+			return fmt.Sprintf("%s/%s/%d", constants.FileSystemSharedSpace, path.ID(""), f.user.ID)
 	default:
 		return fmt.Sprintf("%s/%s/%d", path.FileSystem(), path.ID(uidHashed), f.user.ID)
 	}
@@ -803,14 +828,25 @@ func generateSavePath(policy *ent.StoragePolicy, req *fs.UploadRequest, user *en
 }
 
 func canMoveOrCopyTo(src, dst *fs.URI, isCopy bool) bool {
+sameSharedSpace := func() bool {
+		return src.ID("") != "" && src.ID("") == dst.ID("")
+	}
+
 	if isCopy {
-		return src.FileSystem() == dst.FileSystem() && src.FileSystem() == constants.FileSystemMy
+		if src.FileSystem() == constants.FileSystemMy && dst.FileSystem() == constants.FileSystemSharedSpace {
+			return true
+		}
+		return src.FileSystem() == dst.FileSystem() &&
+			(src.FileSystem() == constants.FileSystemMy ||
+				(src.FileSystem() == constants.FileSystemSharedSpace && sameSharedSpace()))
 	} else {
 		switch src.FileSystem() {
 		case constants.FileSystemMy:
 			return dst.FileSystem() == constants.FileSystemMy || dst.FileSystem() == constants.FileSystemTrash
 		case constants.FileSystemTrash:
 			return dst.FileSystem() == constants.FileSystemMy
+		case constants.FileSystemSharedSpace:
+			return dst.FileSystem() == constants.FileSystemSharedSpace && sameSharedSpace()
 
 		}
 	}
