@@ -142,7 +142,8 @@ export const getActionOpt = (
   const parentUrl = new CrUri(targets?.[0]?.path ?? defaultPath);
   targets.forEach((target) => {
     let readable = true;
-    let updatable = target.owned && parentUrl.fs() != Filesystem.share;
+    const inSharedSpace = parentUrl.fs() == Filesystem.shared_space;
+    let updatable = (target.owned || inSharedSpace) && parentUrl.fs() != Filesystem.share;
 
     if (display.allReadable && !readable) {
       display.allReadable = false;

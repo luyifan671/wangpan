@@ -559,11 +559,15 @@ function processFileListDiff(index: number, deleted: FileResponse[], refreshIfNe
       potentialParents.push(new CrUri(base).join(...elements.slice(0, index + 1)).toString());
     });
 
+    let rootDeleted = false;
     deleted.forEach((f) => {
       // Filter out potential parents
-      const index = potentialParents.findIndex((p) => f.path == p);
-      if (index > 0) {
-        potentialParents.splice(index);
+      const idx = potentialParents.findIndex((p) => f.path == p);
+      if (idx > 0) {
+        potentialParents.splice(idx);
+      } else if (idx === 0) {
+        // The filesystem root itself was deleted (e.g., shared space root)
+        rootDeleted = true;
       }
     });
     if (potentialParents.length > 0) {
@@ -601,6 +605,9 @@ function processFileListDiff(index: number, deleted: FileResponse[], refreshIfNe
       newNavigatePath
     ) {
       dispatch(navigateToPath(index, newNavigatePath));
+    } else if (refreshIfNeeded && rootDeleted) {
+      // Filesystem root was deleted, navigate to default path
+      dispatch(navigateToPath(index, defaultPath));
     }
   };
 }

@@ -1,38 +1,27 @@
-import { LoadingButton } from "@mui/lab";
 import {
   Avatar,
-  Box,
   DialogContent,
   Divider,
-  IconButton,
   List,
   ListItem,
   ListItemAvatar,
   ListItemText,
-  MenuItem,
-  Select,
   Stack,
   TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
-import { DeleteOutline } from "@mui/icons-material";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   getSharedSpaceMembers,
-  sendAddSharedSpaceMember,
   sendCreateSharedSpace,
-  sendRemoveSharedSpaceMember,
   sendUpdateSharedSpace,
-  sendUpdateSharedSpaceMember,
 } from "../../../api/api.ts";
 import { SharedSpace, SharedSpaceMember, SharedSpaceRole } from "../../../api/space.ts";
-import { User } from "../../../api/user.ts";
 import { useAppDispatch } from "../../../redux/hooks.ts";
+import SessionManager from "../../../session";
 import DraggableDialog from "../../Dialogs/DraggableDialog.tsx";
 import UserAvatar from "../../Common/User/UserAvatar.tsx";
-import UserSearchInput from "../../Admin/File/UserSearchInput.tsx";
 
 export interface SharedSpaceDialogProps {
   open: boolean;
@@ -60,13 +49,12 @@ const SharedSpaceDialog = ({ open, space, onClose, onChanged }: SharedSpaceDialo
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [members, setMembers] = useState<SharedSpaceMember[]>([]);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [selectedRole, setSelectedRole] = useState<SharedSpaceRole>("editor");
   const [loading, setLoading] = useState(false);
   const [memberLoading, setMemberLoading] = useState(false);
 
+  const currentUserId = SessionManager.currentLoginOrNull()?.user?.id;
   const isManage = !!space;
-  const canManageMembers = space?.role === "admin";
+  const isOwner = space?.owner_id === currentUserId;
 
   const loadMembers = useCallback(async () => {
     if (!space) {
@@ -90,8 +78,6 @@ const SharedSpaceDialog = ({ open, space, onClose, onChanged }: SharedSpaceDialo
 
     setName(space?.name ?? "");
     setDescription(space?.description ?? "");
-    setSelectedUser(null);
-    setSelectedRole("editor");
     loadMembers();
   }, [open, space, loadMembers]);
 
@@ -116,56 +102,6 @@ const SharedSpaceDialog = ({ open, space, onClose, onChanged }: SharedSpaceDialo
     }
   }, [description, dispatch, name, onChanged, onClose, space]);
 
-  const onAddMember = useCallback(async () => {
-    if (!space || !selectedUser) {
-      return;
-    }
-
-    setMemberLoading(true);
-    try {
-      await dispatch(sendAddSharedSpaceMember(space.id, { user_id: selectedUser.id, role: selectedRole }));
-      setSelectedUser(null);
-      await loadMembers();
-      onChanged?.(space);
-    } finally {
-      setMemberLoading(false);
-    }
-  }, [dispatch, loadMembers, onChanged, selectedRole, selectedUser, space]);
-
-  const onChangeRole = useCallback(
-    async (member: SharedSpaceMember, role: SharedSpaceRole) => {
-      if (!space) {
-        return;
-      }
-
-      setMemberLoading(true);
-      try {
-        await dispatch(sendUpdateSharedSpaceMember(space.id, member.id, { role }));
-        await loadMembers();
-      } finally {
-        setMemberLoading(false);
-      }
-    },
-    [dispatch, loadMembers, space],
-  );
-
-  const onRemoveMember = useCallback(
-    async (member: SharedSpaceMember) => {
-      if (!space) {
-        return;
-      }
-
-      setMemberLoading(true);
-      try {
-        await dispatch(sendRemoveSharedSpaceMember(space.id, member.id));
-        await loadMembers();
-      } finally {
-        setMemberLoading(false);
-      }
-    },
-    [dispatch, loadMembers, space],
-  );
-
   return (
     <DraggableDialog
       title={title}
@@ -174,7 +110,7 @@ const SharedSpaceDialog = ({ open, space, onClose, onChanged }: SharedSpaceDialo
       dialogProps={{ open, onClose }}
       showActions
       showCancel
-      okText={isManage ? t("common:save", { defaultValue: "保存" }) : t("common:create", { defaultValue: "Create" })}
+      okText={isManage ? t("common:save", { defaultValue: "保存" }) : t("common:create", { defaultValue: "创建" })}
       onAccept={onAccept}
     >
       <DialogContent sx={{ pt: 1, minWidth: { xs: "unset", sm: 460 } }}>
@@ -183,7 +119,7 @@ const SharedSpaceDialog = ({ open, space, onClose, onChanged }: SharedSpaceDialo
             autoFocus
             fullWidth
             size="small"
-            label={t("application:sharedSpace.name", { defaultValue: "Name" })}
+            label={t("application:sharedSpace.name", { defaultValue: "名称" })}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -192,7 +128,7 @@ const SharedSpaceDialog = ({ open, space, onClose, onChanged }: SharedSpaceDialo
             multiline
             minRows={2}
             size="small"
-            label={t("application:sharedSpace.description", { defaultValue: "Description" })}
+            label={t("application:sharedSpace.description", { defaultValue: "描述" })}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -200,75 +136,31 @@ const SharedSpaceDialog = ({ open, space, onClose, onChanged }: SharedSpaceDialo
             <>
               <Divider />
               <Typography variant="subtitle2">
-                {t("application:sharedSpace.members", { defaultValue: "Members" })}
+                {t("application:sharedSpace.members", { defaultValue: "成员" })}
               </Typography>
-              {canManageMembers && (
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
-                  <Box sx={{ flex: 1 }}>
-                    <UserSearchInput
-                      label={t("application:sharedSpace.searchUser", { defaultValue: "Search user" })}
-                      onUserSelected={setSelectedUser}
-                    />
-                  </Box>
-                  <Select
-                    size="small"
-                    value={selectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value as SharedSpaceRole)}
-                  >
-                    {roleOptions.map((role) => (
-                      <MenuItem key={role} value={role}>
-                        {roleLabel(role)}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  <LoadingButton
-                    variant="outlined"
-                    loading={memberLoading}
-                    disabled={!selectedUser}
-                    onClick={onAddMember}
-                  >
-                    {t("common:add", { defaultValue: "Add" })}
-                  </LoadingButton>
-                </Stack>
-              )}
               <List dense disablePadding>
-                {members.map((member) => (
-                  <ListItem
-                    key={member.id}
-                    disableGutters
-                    secondaryAction={
-                      canManageMembers && (
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Select
-                            size="small"
-                            value={member.role}
-                            disabled={memberLoading}
-                            onChange={(e) => onChangeRole(member, e.target.value as SharedSpaceRole)}
-                          >
-                            {roleOptions.map((role) => (
-                              <MenuItem key={role} value={role}>
-                                {roleLabel(role)}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                          <Tooltip title={t("common:delete")}>
-                            <IconButton disabled={memberLoading} onClick={() => onRemoveMember(member)}>
-                              <DeleteOutline fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      )
-                    }
-                  >
-                    <ListItemAvatar>
-                      {member.user ? <UserAvatar user={member.user} /> : <Avatar />}
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={member.user?.nickname ?? member.user_id}
-                      secondary={member.user?.email ?? roleLabel(member.role)}
-                    />
-                  </ListItem>
-                ))}
+                {members.map((member) => {
+                  const isViaGroup = !!member.via_group_name;
+
+                  return (
+                    <ListItem
+                      key={`${member.id}-${member.user_id ?? member.id}`}
+                      disableGutters
+                    >
+                      <ListItemAvatar>
+                        {member.user ? <UserAvatar user={member.user} /> : <Avatar />}
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={member.user?.nickname ?? member.user_id}
+                        secondary={
+                          isViaGroup
+                            ? t("application:sharedSpace.inheritedFromGroup", { defaultValue: "继承自用户组" }) + ` ${member.via_group_name}`
+                            : (member.user?.email ?? roleLabel(member.role))
+                        }
+                      />
+                    </ListItem>
+                  );
+                })}
               </List>
             </>
           )}

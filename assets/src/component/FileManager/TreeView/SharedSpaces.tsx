@@ -3,10 +3,10 @@ import { Collapse } from "@mui/material";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TransitionGroup } from "react-transition-group";
-import { getSharedSpaces, sendDeleteSharedSpace } from "../../../api/api.ts";
+import { getSharedSpaces, sendCreateSharedSpace } from "../../../api/api.ts";
 import { SharedSpace } from "../../../api/space.ts";
+import SessionManager from "../../../session";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks.ts";
-import { confirmOperation } from "../../../redux/thunks/dialog.ts";
 import { navigateToPath } from "../../../redux/thunks/filemanager.ts";
 import CrUri, { Filesystem } from "../../../util/uri.ts";
 import SideNavItem from "../../Frame/NavBar/SideNavItem.tsx";
@@ -15,7 +15,6 @@ import { FmIndexContext } from "../FmIndexContext.tsx";
 import { SquareMenu, SquareMenuItem } from "../ContextMenu/ContextMenu.tsx";
 import { ListItemIcon, ListItemText } from "@mui/material";
 import SettingsOutlined from "../../Icons/SettingsOutlined.tsx";
-import DeleteOutlined from "../../Icons/DeleteOutlined.tsx";
 import TreeFiles from "./TreeFiles.tsx";
 
 const sharedSpacesChangedEvent = "cloudreve:shared-spaces-changed";
@@ -24,31 +23,27 @@ export const SharedSpacesNavItem = () => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const fmIndex = useContext(FmIndexContext);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const currentFs = useAppSelector((s) => s.fileManager[fmIndex].current_fs);
 
-  const onChanged = useCallback(
-    async (space?: SharedSpace) => {
+  const handleClick = useCallback(async () => {
+    const res = await dispatch(getSharedSpaces({ page_size: 1 }));
+    let space: SharedSpace | undefined = res.spaces[0];
+    if (!space) {
+      const groupName = SessionManager.currentUserGroup()?.name || "";
+      space = await dispatch(sendCreateSharedSpace({ name: groupName }));
       window.dispatchEvent(new Event(sharedSpacesChangedEvent));
-      setDialogOpen(false);
-      if (space) {
-        dispatch(navigateToPath(fmIndex, space.root_uri));
-      }
-    },
-    [dispatch, fmIndex],
-  );
+    }
+    dispatch(navigateToPath(fmIndex, space.root_uri));
+  }, [dispatch, fmIndex]);
 
   return (
-    <>
-      <SideNavItem
-        level={0}
-        icon={<GroupsOutlined fontSize="small" color="action" />}
-        label={t("application:sharedSpace.title", { defaultValue: "共享空间" })}
-        active={currentFs === Filesystem.shared_space}
-        onClick={() => setDialogOpen(true)}
-      />
-      <SharedSpaceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onChanged={onChanged} />
-    </>
+    <SideNavItem
+      level={0}
+      icon={<GroupsOutlined fontSize="small" color="action" />}
+      label={t("application:sharedSpace.title", { defaultValue: "共享空间" })}
+      active={currentFs === Filesystem.shared_space}
+      onClick={handleClick}
+    />
   );
 };
 
@@ -109,23 +104,6 @@ const SharedSpaces = () => {
     onContextMenuClose();
   }, [contextMenu.space, onContextMenuClose]);
 
-  const onDeleteClick = useCallback(async () => {
-    const space = contextMenu.space;
-    onContextMenuClose();
-    if (!space) return;
-    try {
-      await dispatch(
-        confirmOperation(
-          t("application:sharedSpace.confirmDelete", { defaultValue: "确认删除共享空间 {{name}}？此操作不可撤销。", name: space.name }),
-        ),
-      );
-    } catch {
-      return;
-    }
-    await dispatch(sendDeleteSharedSpace(space.id));
-    loadSpaces();
-  }, [contextMenu.space, dispatch, loadSpaces, onContextMenuClose, t]);
-
   const onManageChanged = useCallback(
     (space?: SharedSpace) => {
       setManageOpen(false);
@@ -157,14 +135,6 @@ const SharedSpaces = () => {
           </ListItemIcon>
           <ListItemText>
             {t("application:sharedSpace.manage", { defaultValue: "管理共享空间" })}
-          </ListItemText>
-        </SquareMenuItem>
-        <SquareMenuItem onClick={onDeleteClick}>
-          <ListItemIcon>
-            <DeleteOutlined fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>
-            {t("common:delete", { defaultValue: "删除" })}
           </ListItemText>
         </SquareMenuItem>
       </SquareMenu>

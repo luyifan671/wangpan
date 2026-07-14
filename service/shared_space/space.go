@@ -128,6 +128,22 @@ func requireAdmin(c *gin.Context, dep dependency.Dep, spaceID int) (types.Shared
 	return role, nil
 }
 
+func requireOwner(c *gin.Context, dep dependency.Dep, spaceID int) (types.SharedSpaceRole, error) {
+	user := inventory.UserFromContext(c)
+	space, err := dep.SpaceClient().GetByID(c, spaceID)
+	if err != nil {
+		return "", serializer.NewError(serializer.CodeNotFound, "共享空间 not found", err)
+	}
+	if space.OwnerID != user.ID {
+		return "", serializer.NewError(serializer.CodeNoPermissionErr, "只有共享空间创建者可以管理成员", nil)
+	}
+	role, err := dep.SpaceClient().GetMemberRole(c, spaceID, user.ID)
+	if err != nil {
+		return "", serializer.NewError(serializer.CodeNoPermissionErr, "没有权限管理共享空间", err)
+	}
+	return role, nil
+}
+
 func requireMember(c *gin.Context, dep dependency.Dep, spaceID int) (types.SharedSpaceRole, error) {
 	user := inventory.UserFromContext(c)
 	role, err := dep.SpaceClient().GetMemberRole(c, spaceID, user.ID)
@@ -312,19 +328,51 @@ func (s *ListSharedSpaceService) Members(c *gin.Context) (*serializer.Response, 
 	if err != nil {
 		return nil, serializer.NewError(serializer.CodeDBError, "Failed to list shared space members", err)
 	}
+		space, err := dep.SpaceClient().GetByID(c, spaceID)
+		if err != nil {
+			return nil, serializer.NewError(serializer.CodeNotFound, "共享空间 not found", err)
+		}
+
 
 	return &serializer.Response{
 		Data: gin.H{
-			"members":    loMapMembers(c, dep, members),
+			"members":    loMapMembers(c, dep, members, space.OwnerID),
 			"pagination": pagination,
 		},
 	}, nil
 }
 
-func loMapMembers(c *gin.Context, dep dependency.Dep, members []*ent.SharedSpaceMember) []gin.H {
+func loMapMembers(c *gin.Context, dep dependency.Dep, members []*ent.SharedSpaceMember, ownerID int) []gin.H {
+	// Collect direct member user IDs + owner to exclude from group user lists
+	excludeUserIDs := map[int]bool{ownerID: true}
+	for _, member := range members {
+		if member.UserID != 0 {
+			excludeUserIDs[member.UserID] = true
+		}
+	}
+
 	res := make([]gin.H, 0, len(members))
 	for _, member := range members {
-		res = append(res, encodeMember(c, dep, member))
+		if g, err := member.Edges.GroupOrErr(); err == nil {
+			// Expand group users as individual member entries
+			if users, err := g.Edges.UsersOrErr(); err == nil {
+				for _, u := range users {
+					if excludeUserIDs[u.ID] {
+						continue
+					}
+					res = append(res, gin.H{
+						"id":             hashid.EncodeSpaceMemberID(dep.HashIDEncoder(), member.ID),
+						"space_id":       hashid.EncodeSpaceID(dep.HashIDEncoder(), member.SharedSpaceID),
+						"user_id":        hashid.EncodeUserID(dep.HashIDEncoder(), u.ID),
+						"user":           usersvc.BuildUserRedacted(c, u, usersvc.RedactLevelUser, dep.HashIDEncoder()),
+						"role":           member.Role,
+						"via_group_name": g.Name,
+					})
+				}
+			}
+		} else {
+			res = append(res, encodeMember(c, dep, member))
+		}
 	}
 	return res
 }
@@ -336,7 +384,7 @@ func (s *AddMemberService) Add(c *gin.Context) (*serializer.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := requireAdmin(c, dep, spaceID); err != nil {
+	if _, err := requireOwner(c, dep, spaceID); err != nil {
 		return nil, err
 	}
 
@@ -371,7 +419,7 @@ func (s *UpdateMemberService) Update(c *gin.Context) (*serializer.Response, erro
 	if err != nil {
 		return nil, serializer.NewError(serializer.CodeNotFound, "Member not found", err)
 	}
-	if _, err := requireAdmin(c, dep, member.SharedSpaceID); err != nil {
+	if _, err := requireOwner(c, dep, member.SharedSpaceID); err != nil {
 		return nil, err
 	}
 	space, err := dep.SpaceClient().GetByID(c, member.SharedSpaceID)
@@ -403,7 +451,7 @@ func (s *RemoveMemberService) Remove(c *gin.Context) (*serializer.Response, erro
 	if err != nil {
 		return nil, serializer.NewError(serializer.CodeNotFound, "Member not found", err)
 	}
-	if _, err := requireAdmin(c, dep, member.SharedSpaceID); err != nil {
+	if _, err := requireOwner(c, dep, member.SharedSpaceID); err != nil {
 		return nil, err
 	}
 	space, err := dep.SpaceClient().GetByID(c, member.SharedSpaceID)

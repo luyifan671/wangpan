@@ -106,8 +106,10 @@ const Tags = () => {
       color = color == theme.palette.action.selected ? undefined : color;
       addRecentUsedColor(color, UserSettings.UsedCustomizedTagColors);
       setHex(color);
+      // Apply new color to all existing tags
+      setTags((prev) => prev.map((tag) => ({ ...tag, color })));
     },
-    [theme, setHex],
+    [theme, setHex, setTags],
   );
 
   const onTagAdded = useCallback(

@@ -16,8 +16,20 @@ export interface SharedSpaceMember {
   id: string;
   space_id: string;
   user_id?: string;
+  group_id?: number;
   role: SharedSpaceRole;
   user?: User;
+  group?: {
+    id: number;
+    name: string;
+  };
+  users?: SharedSpaceMemberUser[];
+  via_group_name?: string;
+}
+
+export interface SharedSpaceMemberUser {
+  user_id: string;
+  user: User;
 }
 
 export interface ListSharedSpaceService {

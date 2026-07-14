@@ -9,6 +9,7 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/file"
 	"github.com/cloudreve/Cloudreve/v4/ent/sharedspace"
 	"github.com/cloudreve/Cloudreve/v4/ent/sharedspacemember"
+	"github.com/cloudreve/Cloudreve/v4/ent/user"
 	"github.com/cloudreve/Cloudreve/v4/inventory/types"
 	"github.com/cloudreve/Cloudreve/v4/pkg/hashid"
 	"github.com/samber/lo"
@@ -164,44 +165,53 @@ func (c *spaceClient) ListSpaces(ctx context.Context, userID int, args *Paginati
 		pageSize = 100
 	}
 
-	// Get user's group for group-level membership lookup
-	user, err := c.client.User.Get(ctx, userID)
+	// Load user with group permissions to check if admin
+	u, err := c.client.User.Query().
+		Where(user.IDEQ(userID)).
+		WithGroup().
+		Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	// Find all space memberships for this user (both direct and group-level)
-	memberships, err := c.client.SharedSpaceMember.Query().
-		Where(
-			sharedspacemember.Or(
-				sharedspacemember.UserIDEQ(userID),
-				sharedspacemember.GroupIDEQ(user.GroupUsers),
-			),
-		).
-		All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query space memberships: %w", err)
+	isAdmin := u.Edges.Group.Permissions.Enabled(int(types.GroupPermissionIsAdmin))
+
+	var query *ent.SharedSpaceQuery
+	if isAdmin {
+		// Admin sees all shared spaces
+		query = c.client.SharedSpace.Query()
+	} else {
+		// Find all space memberships for this user's current group
+		memberships, err := c.client.SharedSpaceMember.Query().
+			Where(
+				sharedspacemember.GroupIDEQ(u.GroupUsers),
+			).
+			All(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query space memberships: %w", err)
+		}
+
+		spaceIDs := lo.Map(memberships, func(m *ent.SharedSpaceMember, _ int) int {
+			return m.SharedSpaceID
+		})
+
+		if len(spaceIDs) == 0 {
+			return &ListSpaceResult{
+				Spaces: []*ent.SharedSpace{},
+				PaginationResults: &PaginationResults{
+					Page:       args.Page,
+					PageSize:   pageSize,
+					TotalItems: 0,
+				},
+			}, nil
+		}
+
+		query = c.client.SharedSpace.Query().
+			Where(
+				sharedspace.IDIn(spaceIDs...),
+			)
 	}
 
-	spaceIDs := lo.Map(memberships, func(m *ent.SharedSpaceMember, _ int) int {
-		return m.SharedSpaceID
-	})
-
-	if len(spaceIDs) == 0 {
-		return &ListSpaceResult{
-			Spaces: []*ent.SharedSpace{},
-			PaginationResults: &PaginationResults{
-				Page:       args.Page,
-				PageSize:   pageSize,
-				TotalItems: 0,
-			},
-		}, nil
-	}
-
-	query := c.client.SharedSpace.Query().
-		Where(
-			sharedspace.IDIn(spaceIDs...),
-		)
 	total, err := query.Count(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count spaces: %w", err)
@@ -297,7 +307,21 @@ func (c *spaceClient) UpdateMemberRole(ctx context.Context, memberID int, role t
 }
 
 func (c *spaceClient) GetMemberRole(ctx context.Context, spaceID, userID int) (types.SharedSpaceRole, error) {
-	// First check direct user membership
+	// Load user with group first for admin check
+	u, err := c.client.User.Query().
+		Where(user.IDEQ(userID)).
+		WithGroup().
+		Only(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// System admin has full access to all shared spaces
+	if u.Edges.Group.Permissions.Enabled(int(types.GroupPermissionIsAdmin)) {
+		return types.SharedSpaceRoleAdmin, nil
+	}
+
+	// Check direct user membership
 	member, err := c.client.SharedSpaceMember.Query().
 		Where(
 			sharedspacemember.SharedSpaceIDEQ(spaceID),
@@ -311,16 +335,11 @@ func (c *spaceClient) GetMemberRole(ctx context.Context, spaceID, userID int) (t
 		return "", fmt.Errorf("failed to get member role: %w", err)
 	}
 
-	// Check group membership — get user's group first
-	user, err := c.client.User.Get(ctx, userID)
-	if err != nil {
-		return "", fmt.Errorf("failed to get user for group check: %w", err)
-	}
-
+	// Check group membership
 	member, err = c.client.SharedSpaceMember.Query().
 		Where(
 			sharedspacemember.SharedSpaceIDEQ(spaceID),
-			sharedspacemember.GroupIDEQ(user.GroupUsers),
+			sharedspacemember.GroupIDEQ(u.GroupUsers),
 		).
 		First(ctx)
 	if err != nil {
@@ -329,7 +348,6 @@ func (c *spaceClient) GetMemberRole(ctx context.Context, spaceID, userID int) (t
 
 	return types.SharedSpaceRole(member.Role), nil
 }
-
 func (c *spaceClient) ListMembers(ctx context.Context, spaceID int, args *PaginationArgs) ([]*ent.SharedSpaceMember, *PaginationResults, error) {
 	if args == nil {
 		args = &PaginationArgs{}
@@ -348,7 +366,9 @@ func (c *spaceClient) ListMembers(ctx context.Context, spaceID int, args *Pagina
 
 	members, err := query.
 		WithUser().
-		WithGroup().
+		WithGroup(func(q *ent.GroupQuery) {
+			q.WithUsers()
+		}).
 		Order(sharedspacemember.ByCreatedAt(sql.OrderAsc())).
 		Limit(pageSize).
 		Offset(args.Page * pageSize).

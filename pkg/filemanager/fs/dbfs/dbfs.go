@@ -847,7 +847,7 @@ sameSharedSpace := func() bool {
 		case constants.FileSystemMy:
 			return dst.FileSystem() == constants.FileSystemMy || dst.FileSystem() == constants.FileSystemTrash || dst.FileSystem() == constants.FileSystemSharedSpace
 		case constants.FileSystemTrash:
-			return dst.FileSystem() == constants.FileSystemMy
+			return dst.FileSystem() == constants.FileSystemMy || dst.FileSystem() == constants.FileSystemSharedSpace
 		case constants.FileSystemSharedSpace:
 			return dst.FileSystem() == constants.FileSystemSharedSpace && sameSharedSpace()
 

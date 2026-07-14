@@ -93,7 +93,7 @@ export function setTargetPath(index: number, path: string): AppThunk {
   };
 }
 
-let generation = 0;
+const generations: Record<number, number> = {};
 export interface NavigateReconcileOptions {
   next_page?: boolean;
   sync_view?: boolean;
@@ -182,7 +182,7 @@ export function navigateReconcile(index: number, opt?: NavigateReconcileOptions)
       return;
     }
 
-    const currentGeneration = ++generation;
+    const currentGeneration = (generations[index] = (generations[index] ?? 0) + 1);
     if (!opt?.next_page) {
       dispatch(setFmLoading({ index, value: true }));
     }
@@ -223,7 +223,7 @@ export function navigateReconcile(index: number, opt?: NavigateReconcileOptions)
         listRes.files = sortByLocalCompare(listRes.files, listRes.mixed_type, orderDirection == "desc");
       }
     } catch (e) {
-      if (currentGeneration == generation) {
+      if (currentGeneration == generations[index]) {
         dispatch(
           setFmError({
             index,
@@ -233,13 +233,13 @@ export function navigateReconcile(index: number, opt?: NavigateReconcileOptions)
         return;
       }
     } finally {
-      if (currentGeneration == generation) {
-        dispatch(setFmLoading({ index, value: false }));
-      }
+      // Always clear loading — the generation check for data application
+      // (below) is sufficient to prevent stale data from being displayed.
+      dispatch(setFmLoading({ index, value: false }));
     }
 
     // Check if current request is stale
-    if (currentGeneration !== generation) {
+    if (currentGeneration !== generations[index]) {
       return;
     }
 

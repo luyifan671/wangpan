@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(go build *)",
+      "Bash(go env *)",
+      "Bash(go run *)",
+      "Bash(python3 -c ' *)",
+      "Bash(go mod *)",
+      "Bash(go get *)",
+      "Bash(xargs grep -l \"intercept\")",
+      "Bash(git checkout *)",
+      "Bash(npx tsc *)",
+      "Bash(timeout 15 npx vite --host 0.0.0.0)",
+      "Bash(sed -i 's/if len\\(elements\\) > 0 && elements\\\\[0\\\\] != \"\"/if spaceHashID != \"\"/' pkg/filemanager/fs/dbfs/dbfs.go)",
+      "Bash(sed -i 's/ssNav.initRole\\(ctx, elements\\\\[0\\\\]\\)/ssNav.initRole\\(ctx, spaceHashID\\)/' pkg/filemanager/fs/dbfs/dbfs.go)",
+      "Bash(npm run *)"
+    ]
+  }
+}
